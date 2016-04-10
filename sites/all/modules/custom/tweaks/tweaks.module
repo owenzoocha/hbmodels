@@ -1,0 +1,150 @@
+<?php
+
+/**
+ * @file tweaks.module
+ */
+
+/**
+ * Implements hook_block_info().
+ */
+function tweaks_block_info() {
+  $blocks['contact_us_button'] = array(
+    'info' => t('HBM - Contact Us Button'),
+    'cache' => DRUPAL_CACHE_GLOBAL,
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function tweaks_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'contact_us_button':
+      $block['subject'] = t('Contact Us Button');
+      $block['content'] = theme('contact_us_button');
+    break;
+  }
+  return $block;
+}
+
+/**
+ * Implements of hook_theme().
+ */
+function tweaks_theme() {
+  return array (
+    'contact_us_button' => array(
+      'template' => 'templates/contact-us-button',
+    ),
+  );
+}
+
+/**
+ * Template preprocess for Contact Us Button.
+ */
+function template_preprocess_contact_us_button(&$vars) {
+  $contactus_form = drupal_get_form('models_forms_contactus_form');
+  $modal_options = array(
+    'attributes' => array('id' => 'contactus-popup', 'class' => array('jcontactus-popup-modal')),
+    'heading' => t('Contact Us:'),
+    'body' => drupal_render($contactus_form),
+  );
+  $vars['contactus_form'] = theme('bootstrap_modal', $modal_options);
+  $vars['contactus_btn'] = l(t('Contact Us'), '#', array('attributes' => array('data-toggle' => array('modal'), 'data-target' => array('#contactus-popup'), 'class' => array('contact-btn'))));
+
+}
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function tweaks_ctools_plugin_directory($module, $type) {
+  if ($module == 'hybridauth' && $type == 'icon_pack') {
+    return 'plugins/tweaks_auth_icons';
+  }
+}
+
+/**
+ * Implements hook_form_alter().
+ */
+function tweaks_form_alter(&$form, &$form_state, $form_id) {
+  if ($form_id == 'privatemsg_list') {
+    // dpm($form, $form_id);
+  }
+  if ($form_id == 'views_exposed_form') {
+    if (!empty($form['field_hb_geofield_latlon_op'])) {
+      unset($form['#info']['filter-field_hb_geofield_latlon']['label']);
+      $form['field_hb_geofield_latlon_op']['#chosen'] = TRUE;
+      $form['field_hb_geofield_latlon']['#attributes'][] = array('placeholder' => 'enter your location');
+    }
+  }
+  if ($form_id == 'search_api_sorts_widget_form') {
+    if (!empty($form['sort_by'])) {
+      $form['sort_by']['#chosen'] = TRUE;
+    }
+  }
+  if ($form_id == 'user_login') {
+    unset($form['name']['#description']);
+    unset($form['pass']['#description']);
+    $signup_msg = '<ul class="user-info">';
+    $signup_msg .= '<li>' . t('Not yet signed up?') . ' ' . l('Sign up now', 'user/register') . '</li>';
+    $signup_msg .= '<li>' . t('I\'ve forgotten my password!') . ' ' . l('Reset it here', 'user/password') . '</li>';
+    $signup_msg .= '</ul>';
+    $form['actions']['submit']['#attributes'] = array('class' => array('btn-success'));
+    $form['actions']['submit']['#suffix'] = $signup_msg;
+  }
+  if ($form_id == 'user_pass') {
+    // $form['actions']['submit']['#attributes'] = array('class' => array('btn-success'));
+    $form['actions']['submit']['#value'] = t('e-mail me a password');
+    $signup_msg = '<ul class="user-info">';
+    $signup_msg .= '<li>' . t('Already a member?') . ' ' . l('Sign in now', 'user/login') . '</li>';
+    $signup_msg .= '<li>' . t('Not yet signed up?') . ' ' . l('Sign up now', 'user/register') . '</li>';
+    $signup_msg .= '</ul>';
+    $form['actions']['submit']['#suffix'] = $signup_msg;
+  }
+  if ($form_id == 'user_register_form') {
+    $form['account']['name']['#description'] = t('Pick a username.');
+    $form['account']['mail']['#description'] = t('A valid e-mail address, so we can keep you up to date.');
+    $form['actions']['submit']['#attributes'] = array('class' => array('btn-success'));
+    $form['field_my_tcs']['und']['#description'] = t('You must agree to the') . ' ' . l('terms & conditions', 'terms-conditions', array('attributes' => array('target' => '_blank'))) .'.';
+    unset($form['account']['pass']['#description']);
+    $signup_msg = '<ul class="user-info">';
+    $signup_msg .= '<li>' . t('Already a member?') . ' ' . l('Sign in now', 'user/login') . '</li>';
+    // $signup_msg .= '<li>' . t('I\'ve forgotten my password!') . ' ' . l('Reset it here', 'user/password') . '</li>';
+    $signup_msg .= '</ul>';
+    $form['actions']['submit']['#suffix'] = $signup_msg;
+  }
+}
+
+/**
+ * Return formatted costs with classes etc.
+ */
+function tweaks_get_hb_cost($nw) {
+    $cost_class = FALSE;
+    if ($nw->field_hb_price->value()) {
+      $cost = '<i class="fa fa-dollar"></i> ' . $nw->field_hb_price->value();
+    } else {
+      $cost = '<i class="fa fa-dollar"></i> 19.55';
+    }
+    if ($nw->field_hb_price_type->value()) {
+      switch ($nw->field_hb_price_type->value()) {
+        case 'free':
+          $pt = '<i class="fa fa-dollar"></i> Free';
+          $cost_class = 'cost-free';
+          $cost = FALSE;
+          break;
+         case 'approx':
+          $pt = ' <small>Approx.</small>';
+          break;
+        case 'fixed':
+          $pt = FALSE;
+          break;
+        default:
+          $pt = FALSE;
+          break;
+      }
+    } else {
+      $pt = FALSE;
+    }
+    return '<span class="hb-cost ' . $cost_class . '">' . $cost . $pt . '</span>';
+}

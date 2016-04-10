@@ -1,0 +1,65 @@
+<?php
+ /**
+  * @file models_forms.module.
+  */
+require_once 'models_forms.search.inc';
+require_once 'models_forms.request.inc';
+require_once 'models_forms.publish.inc';
+require_once 'models_forms.contactus.inc';
+
+/**
+* Implements hook_menu().
+*/
+function models_forms_menu() {
+  $items['job/create'] = array(
+    'title' => 'Post a Job',
+    'page callback' => 'drupal_get_form',
+    'page arguments' =>  array('models_forms_create_form'),
+    'access callback' => 'user_is_logged_in',
+    'file' => 'models_forms.create.inc',
+  );
+  $items['job/%/edit'] = array(
+    'title' => 'Edit your Job',
+    'page callback' => 'drupal_get_form',
+    'page arguments' =>  array('models_forms_create_form', 2),
+    'access callback' => 'user_is_logged_in',
+    'file' => 'models_forms.create.inc',
+  );
+
+  return $items;
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function models_forms_theme() {
+  return array (
+    // 'task_buttons' => array(
+    //   'template' => 'templates/task-buttons',
+    // ),
+    // 'task_users' => array(
+    //   'template' => 'templates/task-users',
+    // ),
+    'search_menu' => array(
+      'template' => 'templates/search-form',
+    ),
+  );
+}
+
+
+function template_preprocess_search_menu(&$vars) {
+  $srch = drupal_get_form('models_forms_search_form');
+  $vars['search_box'] = drupal_render($srch);
+  // $active_menu = '<div class="my-menu-dd col-md-12 show-filters">';
+  // $skills_block = block_load('search_api_sorts', 'search-sorts');
+  // $block = _block_get_renderable_array(_block_render_blocks(array($skills_block)));
+  // $filters = drupal_render($block);
+  // $skills_block = block_load('views', '-exp-current_tasks_solr_-page');
+  // $block = _block_get_renderable_array(_block_render_blocks(array($skills_block)));
+  // $filters .= drupal_render($block);
+  // $active_menu .= $filters;
+  // $active_menu .= '</div>';
+  // $vars['active_menu'] = $active_menu;
+  // $vars['show_filters'] = !empty(arg(0)) && arg(0) == 'task-search' ? true : false;
+  $vars['show_filters'] = FALSE;
+}
