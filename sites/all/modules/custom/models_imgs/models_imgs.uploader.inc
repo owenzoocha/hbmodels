@@ -4,10 +4,6 @@
  * @file models_imgs.uploader.inc.
  */
 
-function models_imgs_init(){
-  dpm(drupal_realpath('public://'));
-}
-
 /**
  * Provides functionality to handle dropzone js uploads.
  */
@@ -17,8 +13,6 @@ function models_imgs_upload_page() {
     if (!empty($_FILES)) {
 
       $nw = entity_metadata_wrapper('node', $_GET['nid']);
-
-      // print_r($_FILES);
 
       $i = 0;
       foreach ($_FILES['files']['name'] as $key => $file) {
@@ -30,6 +24,12 @@ function models_imgs_upload_page() {
         $src = $_FILES['files']['tmp_name'][$key];
         $file_name = $nw->getIdentifier()  . '_' . strtotime('now') . '_' . transliteration_clean_filename($file);
         $destination = $path . '/' . $file_name;
+
+        $ew = entity_create('pics', array('type' => 'pics'));
+        $title = 'pics_' . $i . '_' . $nw->getIdentifier() . '_' . $nw->label();
+        $ew->title = $title;
+        $ew->created = strtotime('now');
+        $ew->changed = strtotime('now');
 
         move_uploaded_file($src, $destination);
 
@@ -48,12 +48,19 @@ function models_imgs_upload_page() {
             'display' => 1,
           );
         // }
-        dpm($file, 'fileez');
+        // dpm($file, 'fileez');
 
         $file = file_save((object) $file);
-        $nw->field_hb_imgs[] = (array) $file;
+        $ew->field_pics_img[LANGUAGE_NONE][0] = (array) $file;
+        $ew->save();
         $i++;
+
+        // dpm($ew, 'eid');
+
+        $nw->field_hb_pics[] = $ew->id;
       }
+
+      // dpm($nw->value());
       $nw->save();
     }
   }

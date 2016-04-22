@@ -73,14 +73,35 @@ function tweaks_form_alter(&$form, &$form_state, $form_id) {
   }
   if ($form_id == 'views_exposed_form') {
     if (!empty($form['field_hb_geofield_latlon_op'])) {
+      global $user;
       unset($form['#info']['filter-field_hb_geofield_latlon']['label']);
-      $form['field_hb_geofield_latlon_op']['#chosen'] = TRUE;
+      // $form['field_hb_geofield_latlon_op']['#chosen'] = TRUE;
+      $uw = entity_metadata_wrapper('user', $user->uid);
+
+      // -37.859354,144.971573
+      // $address = '11/349, Beaconsfield Parade, St Kilda West, 3182';
+      // $point = geocoder('google', $address);
+      // $point = geocoder_google($address, array('https' => TRUE));
+      // dpm($point, 'pointtt');
+
       $form['field_hb_geofield_latlon']['#attributes'][] = array('placeholder' => 'enter your location');
+      $form['sort'] = array(
+        '#type' => 'hidden',
+        '#title' => 'field_hb_geofield?',
+        '#default_value' => 'field_hb_geofield:latlon',
+      );
+      $form['order'] = array(
+        '#type' => 'hidden',
+        '#title' => 'order?',
+        '#default_value' => 'asc',
+      );
+      // &sort=field_hb_geofield%3Alatlon&order=asc
+      // $form['#submit'][] = 'tweaks_add_closest_param_form_submit';
     }
   }
   if ($form_id == 'search_api_sorts_widget_form') {
     if (!empty($form['sort_by'])) {
-      $form['sort_by']['#chosen'] = TRUE;
+      // $form['sort_by']['#chosen'] = TRUE;
     }
   }
   if ($form_id == 'user_login') {
@@ -115,6 +136,12 @@ function tweaks_form_alter(&$form, &$form_state, $form_id) {
     $form['actions']['submit']['#suffix'] = $signup_msg;
   }
 }
+
+
+// function tweaks_add_closest_param_form_submit(&$form, &$form_state) {
+//   $form_state['values']['honk'] = 'yes';
+//   dpm($form_state, 'honk');
+// }
 
 /**
  * Return formatted costs with classes etc.

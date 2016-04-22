@@ -7,9 +7,9 @@ dependencies[] = entity
 
 configure = admin/config/content/geocoder
 
-; Information added by Drupal.org packaging script on 2016-02-01
-version = "7.x-1.3+1-dev"
+; Information added by Drupal.org packaging script on 2016-04-11
+version = "7.x-1.3+2-dev"
 core = "7.x"
 project = "geocoder"
-datestamp = "1454339067"
+datestamp = "1460359459"
 

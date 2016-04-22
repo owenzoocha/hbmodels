@@ -26,12 +26,41 @@ function models_imgs_menu() {
 }
 
 /**
+ * Implements hook_block_info().
+ */
+function models_imgs_block_info() {
+  $blocks['job_slider'] = array(
+    'info' => t('HBM - Job Page Slider'),
+    'cache' => DRUPAL_CACHE_GLOBAL,
+  );
+  return $blocks;
+}
+
+/**
+ * Implements hook_block_view().
+ */
+function models_imgs_block_view($delta = '') {
+  $block = array();
+  switch ($delta) {
+    case 'job_slider':
+      $block['subject'] = t('Job Page Slider');
+      $block['content'] = theme('job_slider_block');
+    break;
+  }
+  return $block;
+}
+
+
+/**
  * Implements of hook_theme().
  */
 function models_imgs_theme() {
   return array (
     'dropzone_for_job' => array(
       'template' => 'templates/dropzone-for-job',
+    ),
+    'job_slider_block' => array(
+      'template' => 'templates/job-slider-block',
     ),
   );
 }
@@ -41,4 +70,23 @@ function models_imgs_theme() {
  */
 function template_preprocess_dropzone_for_job(&$vars) {
   // drupal_add_js(drupal_get_path('module', 'models_nav') . '/js/models_nav.js');
+}
+
+/**
+ * Template preprocess for Job Slider Block - for job page.
+ */
+function template_preprocess_job_slider_block(&$vars) {
+  drupal_add_js(libraries_get_path('slick') . '/' . 'slick/slick.min.js');
+  drupal_add_css(libraries_get_path('slick') . '/' . 'slick/slick.css');
+  drupal_add_css(libraries_get_path('slick') . '/' . 'slick/slick-theme.css');
+  drupal_add_js(drupal_get_path('module', 'models_imgs') . '/js/models_imgs.js');
+  $nw = entity_metadata_wrapper('node', arg(1));
+  $pics = FALSE;
+  if ($nw->field_hb_pics->value()) {
+    foreach ($nw->field_hb_pics->getIterator() as $key => $ew) {
+      $pics .= '<div class="slider-img img-circle">' . theme('image_style', array('style_name' => 'profile', 'path' => $ew->field_pics_img->value()['uri'])) . '</div>';
+    }
+  }
+  $vars['pics'] = $pics;
+
 }

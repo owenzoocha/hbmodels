@@ -330,15 +330,10 @@ function geocoder_widget_get_field_value($entity_type, $field_instance, $entity 
         }
 
         // No cache record, so fetch live.
-        if ($geometry === NULL || empty($geometry)) {
+        if ($geometry === NULL) {
           // Geocode any value from our source field.
-          dpm('geo');
-
           try {
-            $geometry = call_user_func($handler['field_callback'], $field_info, $item, $handler_settings, $entity_type, $entity, $field_info, $field_instance, isset($entity->original->language) ? $entity->original->language : NULL, $source_field_values);
-
-            dpm('hi?');
-            // $geometry = call_user_func($handler['field_callback'], $field_info, $item, $handler_settings);
+            $geometry = call_user_func($handler['field_callback'], $field_info, $item, $handler_settings);
           }
           // No-results or errors throw exceptions, which affects 1 field item, not all.
           catch (Exception $e) {

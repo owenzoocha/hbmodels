@@ -26,6 +26,28 @@ function models_forms_menu() {
     'file' => 'models_forms.create.inc',
   );
 
+  $items['user/%/personal-information/edit'] = array(
+    'title' => 'Personal Information',
+    'page callback' => 'eek',
+    // 'page arguments' =>  array('models_forms_personal_information_form', 2),
+    'access callback' => 'user_is_logged_in',
+    'file' => 'models_forms.personal_information.inc',
+  );
+  $items['user/%/profile/edit'] = array(
+    'title' => 'Profile Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' =>  array('models_forms_personal_information_form', 2),
+    'access callback' => 'user_is_logged_in',
+    'file' => 'models_forms.personal_information.inc',
+  );
+  $items['user/%/email-settings/edit'] = array(
+    'title' => 'Email Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' =>  array('models_forms_personal_information_form', 2),
+    'access callback' => 'user_is_logged_in',
+    'file' => 'models_forms.personal_information.inc',
+  );
+
   return $items;
 }
 

@@ -1,51 +1,21 @@
 (function ($) {
 
-  var eq_nav = {
+  var models_nav = {
     init: function(context) {
-      eq_nav.collapseNav();
-
-      $(window).resize(function(e) {
-        if(e.target === window) {
-          return eq_nav.resizeNav();
-        }
-      });
-
-      eq_nav.resizeNav();
-
-    },
-    resizeNav : function() {
-      $('.eq-nav-body').css({
-        height: $(window).height() - $('.eq-nav-body').offset().top - 40,
-      });
-    },
-    collapseNav : function() {
-      $('.event-nav-collapse').on('click', function(){
-        if ($('body').hasClass('show-event-menu-static')) {
-          $('body').removeClass('hide-event-menu show-event-menu-static');
-          $('.eq-nav-footer span').removeClass('fa-long-arrow-right').addClass('fa-long-arrow-left');
-        } else {
-          $('body').addClass('hide-event-menu show-event-menu-static');
-          $('.eq-nav-footer span').addClass('fa-long-arrow-right').removeClass('fa-long-arrow-left');
-        }
-      });
-      $('.col-sm-3 .region').mouseover(function(){
-        if ( $('body').hasClass('hide-event-menu') ) {
-          console.log('has hide menu');
-          $('body').removeClass('hide-event-menu');
-        }
-      });
-      $('.col-sm-3 .region').mouseleave(function(){
-        if ( $('body').hasClass('show-event-menu-static') ) {
-          $('body').addClass('hide-event-menu');
-        }
+      $('#block-views-user-profile-jobs-block .view-content, #block-views-user-profile-jobs-block-1 .view-content').slick({
+        dots: true,
+        infinite: true,
+        speed: 500,
+        slidesToShow: 4,
+        slidesToScroll: 4,
       });
     }
   }
 
-  Drupal.behaviors.eq_nav = {
+  Drupal.behaviors.models_nav = {
     attach: function(context) {
       $('body', context).once(function () {
-        eq_nav.init();
+        models_nav.init();
       });
     }
   };

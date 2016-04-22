@@ -11,6 +11,10 @@ function models_nav_block_info() {
     'info' => t('NAV: left hand side in event menu'),
     'cache' => DRUPAL_NO_CACHE
   );
+  $blocks['settings_nav'] = array(
+    'info' => t('NAV: left hand side on user settings page'),
+    'cache' => DRUPAL_NO_CACHE
+  );
   return $blocks;
 }
 
@@ -24,6 +28,10 @@ function models_nav_block_view($delta = '') {
       $block['subject'] = t('Event Nav');
       $block['content'] = theme('block_event_nav');
     break;
+    case 'settings_nav':
+      $block['subject'] = t('Settings Nav');
+      $block['content'] = theme('block_settings_nav');
+    break;
   }
   return $block;
 }
@@ -35,6 +43,9 @@ function models_nav_theme() {
   return array (
     'block_event_nav' => array(
       'template' => 'templates/block-event-nav',
+    ),
+    'block_settings_nav' => array(
+      'template' => 'templates/block-settings-nav',
     ),
     'my_nav' => array(
       'template' => 'templates/my-nav',
@@ -69,25 +80,65 @@ function template_preprocess_block_event_nav(&$vars) {
 }
 
 /**
+ * Template preprocess for Settings Nav.
+ */
+function template_preprocess_block_settings_nav(&$vars) {
+  global $user;
+  $nav  = '<ul>';
+  $nav .= '<li>' . l(t('Account Settings'), 'user/' . $user->uid . '/account/edit', array('attributes' => array('class' => array('')))) . '</li>';
+  $nav .= '<li>' . l(t('Personal Information'), 'user/' . $user->uid . '/personal-information/edit', array('attributes' => array('class' => array('')))) . '</li>';
+  $nav .= '<li>' . l(t('Profile'), 'user/' . $user->uid . '/profile/edit', array('attributes' => array('class' => array('')))) . '</li>';
+  $nav .= '<li>' . l(t('Interests'), 'user/' . $user->uid . '/interests/edit', array('attributes' => array('class' => array('')))) . '</li>';
+  $nav .= '<li>' . l(t('Email Settings'), 'user/' . $user->uid . '/email-settings/edit', array('attributes' => array('class' => array('')))) . '</li>';
+  $nav .= '</ul>';
+  $vars['settings_nav'] = $nav;
+}
+
+/**
  * Template preprocess for Custom Job Nav.
  */
 function template_preprocess_my_nav(&$vars) {
-  $nw = entity_metadata_wrapper('node', arg(1));
-  if ($nw->field_hb_users->value()) {
-    $reqs = '(' . sizeof($nw->field_hb_users->value()) . ')';
+  if (!isset($vars['user_nav'])) {
+    $nw = entity_metadata_wrapper('node', arg(1));
+    if ($nw->field_hb_users->value()) {
+      $reqs = '(' . sizeof($nw->field_hb_users->value()) . ')';
+    }
+    else {
+      $reqs = FALSE;
+    }
+    $nav  = '<ul>';
+    $nav .= '<li>' . l(t('View'), 'node/' . arg(1), array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '<li>' . l(t('Edit'), 'job/' . arg(1) . '/edit', array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '<li>' . l(t('Photos'), 'job/' . arg(1) . '/photos', array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '<li>' . l(t('Requests') . ' ' . $reqs, 'job/' . arg(1) . '/requests', array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '<li>' . l(t('Feedback'), 'job/' . arg(1) . '/feedback', array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '</ul>';
+    $vars['my_nav'] = $nav;
   }
   else {
-    $reqs = FALSE;
-  }
+    drupal_add_js(libraries_get_path('slick') . '/' . 'slick/slick.min.js');
+    drupal_add_css(libraries_get_path('slick') . '/' . 'slick/slick.css');
+    drupal_add_css(libraries_get_path('slick') . '/' . 'slick/slick-theme.css');
+    drupal_add_js(drupal_get_path('module', 'models_nav') . '/js/models_nav.js');
 
-  $nav  = '<ul>';
-  $nav .= '<li>' . l(t('View'), 'node/' . arg(1), array('attributes' => array('class' => array('')))) . '</li>';
-  $nav .= '<li>' . l(t('Edit'), 'job/' . arg(1) . '/edit', array('attributes' => array('class' => array('')))) . '</li>';
-  $nav .= '<li>' . l(t('Photos'), 'job/' . arg(1) . '/photos', array('attributes' => array('class' => array('')))) . '</li>';
-  $nav .= '<li>' . l(t('Requests') . ' ' . $reqs, 'job/' . arg(1) . '/requests', array('attributes' => array('class' => array('')))) . '</li>';
-  $nav .= '<li>' . l(t('Feedback'), 'job/' . arg(1) . '/feedback', array('attributes' => array('class' => array('')))) . '</li>';
-  $nav .= '</ul>';
-  $vars['my_nav'] = $nav;
+    $my_jobs_count_ = views_get_view_result('user_profile_jobs', 'page_4');
+    $my_jobs_count = $my_jobs_count_[0]->nid > 0 ? ' (' . $my_jobs_count_[0]->nid . ')' : FALSE;
+    $my_requests_count = sizeof(views_get_view_result('user_profile_jobs', 'page_1')) ? ' (' . sizeof(views_get_view_result('user_profile_jobs', 'page_1')) . ')' : FALSE;
+
+
+    $uw = entity_metadata_wrapper('user', $vars['user_nav']);
+    $nav  = '<ul>';
+    $nav .= '<li>' . l(t('Dashboard'), 'user/' . arg(1), array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '<li>' . l(t('Settings'), 'job/' . arg(1) . '/edit', array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '<li>' . l(t('Photos'), 'job/' . arg(1) . '/photos', array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '<li>' . l(t('My Feedback'), 'job/' . arg(1) . '/photos', array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '<li>' . l(t('My Jobs') . $my_jobs_count, 'my-jobs', array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '<li>' . l(t('Job Requests') . $my_requests_count, 'job-requests', array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '<li>' . l(t('Watchlist'), 'job-requests', array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '<li>' . l(t('Previous Jobs'), 'previous-jobs', array('attributes' => array('class' => array('')))) . '</li>';
+    $nav .= '</ul>';
+    $vars['my_nav'] = $nav;
+  }
 }
 
 /**
@@ -148,37 +199,39 @@ function template_preprocess_custom_nav(&$vars) {
 
   $type = field_info_field('field_hb_bt');
   $options = list_allowed_values($type);
+  sort($options);
   $active_beauty_menu = '<div class="my-menu-dd">';
   $active_beauty_menu .= '<ul>';
   foreach ($options as $key => $value) {
-    $active_beauty_menu .= '<li>' . l($value, 'job-search/type/beauty/beauty-treatment/'.$value) . '</li>';
+    $active_beauty_menu .= '<li>' . l($value, 's/type/beauty/beauty-treatment/'.$value) . '</li>';
   }
   $active_beauty_menu .= '</ul>';
 
-  $active_beauty = strpos(current_path(), 'job-search/type/beauty') !== FALSE ? 'active' : FALSE;
-  $links = '<li class="first leaf a-dd-wide a-dd ' . $active_beauty . '">' . l('Beauty', 'job-search/type/beauty') . $active_beauty_menu . '</li>';
+  $active_beauty = strpos(current_path(), 's/type/beauty') !== FALSE ? 'active' : FALSE;
+  $links = '<li class="first leaf a-dd-wide a-dd ' . $active_beauty . '">' . l('Beauty', 's/type/beauty') . $active_beauty_menu . '</li>';
 
 
 
   $type = field_info_field('field_hb_ht');
   $options = list_allowed_values($type);
+  sort($options);
   $active_hair_menu = '<div class="my-menu-dd">';
   $active_hair_menu .= '<ul>';
   foreach ($options as $key => $value) {
-    $active_hair_menu .= '<li>' . l($value, 'job-search/type/hair/hair-treatment/'.$value) . '</li>';
+    $active_hair_menu .= '<li>' . l($value, 's/type/hair/hair-treatment/'.$value) . '</li>';
   }
   $active_hair_menu .= '</ul>';
 
   $active_hair_menu .= '</div>';
 
-  $active_hair = strpos(current_path(), 'job-search/type/hair') !== FALSE ? 'active' : FALSE;
-  $links .= '<li class="leaf a-dd-wide a-dd ' . $active_hair . '">' . l('Hair', 'job-search/type/hair') . $active_hair_menu . '</li>';
+  $active_hair = strpos(current_path(), 's/type/hair') !== FALSE ? 'active' : FALSE;
+  $links .= '<li class="leaf a-dd-wide a-dd ' . $active_hair . '">' . l('Hair', 's/type/hair') . $active_hair_menu . '</li>';
 
   $active_msgs = current_path() == 'messages' ? 'active' : FALSE;
   $links .= '<li class="leaf ' . $active_msgs . '">' . l('Messages', 'messages') . '</li>';
 
-  $active_msgs = current_path() == 'messages3' ? 'active' : FALSE;
-  $links .= '<li class="leaf ' . $active_msgs . '">' . l('Notifications', 'messages') . '</li>';
+  $active_msgs = current_path() == 'messages3' ? 'job/create' : FALSE;
+  $links .= '<li class="leaf ' . $active_msgs . '">' . l('Post Job', 'job/create') . '</li>';
 
   $active_user_menu = '<div class="my-menu-dd">';
   $active_user_menu .=

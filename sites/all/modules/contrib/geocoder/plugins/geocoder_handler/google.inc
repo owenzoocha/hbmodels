@@ -71,8 +71,15 @@ function geocoder_google($address, $options = array()) {
         break;
     }
 
+    $google_url = 'http://maps.googleapis.com/maps/api/geocode/json';
+    if (!empty($options['https'])) {
+      $google_url = str_replace('http://', 'https://', $google_url);
+    }
+
+    dpm($google_url, 'url');
+
     // Build the URL.
-    $url = url("https://maps.googleapis.com/maps/api/geocode/json", array(
+    $url = url($google_url, array(
       'query' => $query,
     ));
 
@@ -191,21 +198,8 @@ function geocoder_google($address, $options = array()) {
   }
 }
 
-function geocoder_google_field($field, $field_item, $options = array(), $entity_type, $entity, $field_info, $field_instance, $language, $source_field_values) {
-  dpm($field['type']);
-  if ($field['type'] == 'computed' && module_exists('computed_field')) {
-    _computed_field_compute_value($entity_type, $entity, $field_info, $field_instance, $language, $source_field_values);
-    // If source computed values are arrays, just take the first one.
-    // @@Todo: how to deal with multi-value computed fields.
-    if (gettype($source_field_values) === 'array') {
-    	$value = $source_field_values[0]['value'];
-    }
-    else {
-    	$value = $source_field_values;
-    }
-    return geocoder_google($value, $options);
-  }
-  if ($field['type'] == 'text' || $field['type'] == 'text_long' || $field['type'] == 'text_with_summary') {
+function geocoder_google_field($field, $field_item, $options = array()) {
+  if ($field['type'] == 'text' || $field['type'] == 'text_long' || $field['type'] == 'text_with_summary' || $field['type'] == 'computed') {
     return geocoder_google($field_item['value'], $options);
   }
   if ($field['type'] == 'addressfield' && module_exists('addressfield') && !addressfield_field_is_empty($field_item, $field)) {
@@ -224,6 +218,13 @@ function geocoder_google_field($field, $field_item, $options = array(), $entity_
 
 function geocoder_google_form($default_values = array()) {
   $form = array();
+
+  $form['https'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'Use HTTPS ?',
+    '#default_value' => isset($default_values['https']) ? $default_values['https'] : FALSE,
+    '#description' => 'Use HTTPS instead of HTTP in the query URL to Google ?',
+  );
 
   $form['geometry_type'] = array(
     '#type' => 'select',
