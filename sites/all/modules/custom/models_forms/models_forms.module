@@ -25,29 +25,40 @@ function models_forms_menu() {
     'access callback' => 'user_is_logged_in',
     'file' => 'models_forms.create.inc',
   );
+  $items['job/%/feedback'] = array(
+    'title' => 'Feedback',
+    'page callback' => 'drupal_get_form',
+    'page arguments' =>  array('models_forms_feedback_form', 2),
+    'access callback' => 'user_is_logged_in',
+    'file' => 'models_forms.feedback.inc',
+  );
 
-  $items['user/%/personal-information/edit'] = array(
+  $items['user/personal-information/settings'] = array(
     'title' => 'Personal Information',
-    'page callback' => 'eek',
+    'page callback' => 'models_forms_personal_info',
     // 'page arguments' =>  array('models_forms_personal_information_form', 2),
     'access callback' => 'user_is_logged_in',
     'file' => 'models_forms.personal_information.inc',
   );
-  $items['user/%/profile/edit'] = array(
+  $items['user/account/settings'] = array(
     'title' => 'Profile Settings',
-    'page callback' => 'drupal_get_form',
-    'page arguments' =>  array('models_forms_personal_information_form', 2),
+    'page callback' => 'models_forms_account_settings',
     'access callback' => 'user_is_logged_in',
     'file' => 'models_forms.personal_information.inc',
   );
-  $items['user/%/email-settings/edit'] = array(
+  $items['user/email/settings'] = array(
     'title' => 'Email Settings',
-    'page callback' => 'drupal_get_form',
-    'page arguments' =>  array('models_forms_personal_information_form', 2),
+    'page callback' => 'models_forms_email_settings',
+    // 'page arguments' =>  array('models_forms_personal_information_form', 2),
     'access callback' => 'user_is_logged_in',
     'file' => 'models_forms.personal_information.inc',
   );
-
+  $items['user/interests/settings'] = array(
+    'title' => 'Your Interests',
+    'page callback' => 'models_forms_interests',
+    'access callback' => 'user_is_logged_in',
+    'file' => 'models_forms.personal_information.inc',
+  );
   return $items;
 }
 

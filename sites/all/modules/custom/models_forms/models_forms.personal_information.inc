@@ -6,22 +6,116 @@
  *
  */
 
-function eek() {
-global $user;
-
-if (module_load_include('inc', 'hybridauth', 'hybridauth.pages')) {
-  dpm('included');
+function models_forms_personal_info() {
+  global $user;
+  $user = user_load($user->uid);
+  module_load_include('inc', 'user', 'user.pages');
+  $user_form = drupal_get_form('user_profile_form', $user);
+  unset($user_form['account']);
+  unset($user_form['field_my_name']);
+  unset($user_form['privatemsg']);
+  unset($user_form['timezone']);
+  unset($user_form['picture']['picture_delete']);
+  unset($user_form['field_hb_type']);
+  unset($user_form['field_hb_ht']);
+  unset($user_form['field_hb_bt']);
+  return drupal_render($user_form);
 }
-// dpm( _hybridauth_identity_load_by_uid($user->uid));
-dpm( _hybridauth_identity_load_by_uid($user->uid));
-$bla = hybridauth_user_identity($user);
-return drupal_render($bla);
 
-// $user=user_load($user->uid);
-// module_load_include('inc', 'user', 'user.pages');
-// $user_form = drupal_get_form('user_profile_form', $user);
-// dpm($user_form);
-// return drupal_render($user_form);
+function models_forms_email_settings() {
+  global $user;
+
+  $user = user_load($user->uid);
+  module_load_include('inc', 'user', 'user.pages');
+  $user_form = drupal_get_form('user_profile_form', $user);
+
+  unset($user_form['account']);
+  unset($user_form['field_my_name']);
+  unset($user_form['field_first_name']);
+  unset($user_form['field_surname']);
+  unset($user_form['field_phone']);
+  unset($user_form['field_gender']);
+  unset($user_form['field_my_web']);
+  unset($user_form['field_my_address']);
+  unset($user_form['field_my_bio']);
+  unset($user_form['field_my_latlong']);
+  unset($user_form['timezone']);
+  unset($user_form['picture']);
+  unset($user_form['field_hb_type']);
+  unset($user_form['field_hb_ht']);
+  unset($user_form['field_hb_bt']);
+  // unset($user_form['privatemsg']['pm_email_only_user']);
+  $user_form['privatemsg']['pm_enable']['#value'] = TRUE;
+  $user_form['privatemsg']['pm_enable']['#default_value'] = TRUE;
+  $user_form['privatemsg']['pm_enable']['#checked'] = TRUE;
+  return drupal_render($user_form);
+}
+
+function models_forms_interests() {
+  global $user;
+
+  $user = user_load($user->uid);
+  module_load_include('inc', 'user', 'user.pages');
+  $user_form = drupal_get_form('user_profile_form', $user);
+
+  $user_form['interest_types'] = array(
+    '#markup' => '<p>' . t('Let us know what you\'re interested in - we can use this to tailor your search results and keep you updated with offers.') . '</p>',
+    '#weight' => 1,
+  );
+  unset($user_form['account']);
+  unset($user_form['field_my_name']);
+  unset($user_form['field_first_name']);
+  unset($user_form['field_surname']);
+  unset($user_form['field_phone']);
+  unset($user_form['field_gender']);
+  unset($user_form['field_my_web']);
+  unset($user_form['field_my_address']);
+  unset($user_form['field_my_bio']);
+  unset($user_form['field_my_latlong']);
+  unset($user_form['privatemsg']);
+  unset($user_form['timezone']);
+  unset($user_form['picture']);
+  unset($user_form['field_hb_type']);
+  // $user_form['field_my_tcs']['und']['#required'] = FALSE;
+  // unset($user_form['field_my_tcs']);
+  return drupal_render($user_form);
+}
+
+function models_forms_account_settings() {
+  global $user;
+
+  module_load_include('inc', 'hybridauth', 'hybridauth.pages');
+  if(!empty(_hybridauth_identity_load_by_uid($user->uid))) {
+    $identity = hybridauth_user_identity($user);
+    $identity_table = drupal_render($identity);
+  }
+
+  $user = user_load($user->uid);
+  module_load_include('inc', 'user', 'user.pages');
+  $user_form = drupal_get_form('user_profile_form', $user);
+
+  unset($user_form['field_my_name']);
+  unset($user_form['field_first_name']);
+  unset($user_form['field_surname']);
+  unset($user_form['field_phone']);
+  unset($user_form['field_gender']);
+  unset($user_form['field_my_web']);
+  unset($user_form['field_my_address']);
+  unset($user_form['field_my_bio']);
+  unset($user_form['field_my_latlong']);
+  unset($user_form['privatemsg']);
+  unset($user_form['timezone']);
+  unset($user_form['picture']);
+  unset($user_form['field_hb_type']);
+  unset($user_form['field_hb_ht']);
+  unset($user_form['field_hb_bt']);
+
+  if (isset($identity_table)) {
+    return drupal_render($user_form) . $identity_table;
+  }
+  else {
+    return drupal_render($user_form);
+  }
 }
 
 /**
@@ -44,7 +138,6 @@ function models_forms_personal_information_form($form, &$form_state){
   //   '#size' => 32,
   //   '#required' => TRUE,
   // );
-
 
 
   $form['submit'] = array(

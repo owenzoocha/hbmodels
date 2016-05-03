@@ -82,10 +82,15 @@ function template_preprocess_job_slider_block(&$vars) {
   drupal_add_js(drupal_get_path('module', 'models_imgs') . '/js/models_imgs.js');
   $nw = entity_metadata_wrapper('node', arg(1));
   $pics = FALSE;
-  if ($nw->field_hb_pics->value()) {
-    foreach ($nw->field_hb_pics->getIterator() as $key => $ew) {
-      $pics .= '<div class="slider-img img-circle">' . theme('image_style', array('style_name' => 'profile', 'path' => $ew->field_pics_img->value()['uri'])) . '</div>';
+  if ($nw->field_hb_type->value() != 'personal') {
+    if ($nw->field_hb_pics->value()) {
+      foreach ($nw->field_hb_pics->getIterator() as $key => $ew) {
+        $pics .= '<div class="slider-img img-circle">' . theme('image_style', array('style_name' => 'profile', 'path' => $ew->field_pics_img->value()['uri'])) . '</div>';
+      }
     }
+  }
+  else {
+    $pics = '<div class="slider-img img-circle">' . l(theme('image_style', array('style_name' => 'profile', 'path' => $nw->author->value()->picture->uri)), 'user/' . $nw->author->getIdentifier(), array('html' => TRUE)) . '</div>';
   }
   $vars['pics'] = $pics;
 

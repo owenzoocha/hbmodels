@@ -22,6 +22,7 @@ function models_forms_create_form($form, &$form_state) {
         $title = $nw->label();
         $notes = $nw->body->value() ? $nw->body->value()['value'] : FALSE;
         $hb_type = $nw->field_hb_type->value() ? $nw->field_hb_type->value() : FALSE;
+        $hb_cost = $nw->field_hb_price->value() ? $nw->field_hb_price->value() : FALSE;
 
         $form_state['job_update'] = $nw->getIdentifier();
         drupal_add_js(array('form_type' => $hb_type), 'setting');
@@ -124,49 +125,46 @@ function models_forms_create_form($form, &$form_state) {
     }
   }
 
-  // $form['#attached']['js'] = 'https://cdnjs.cloudflare.com/ajax/libs/nanobar/0.2.1/nanobar.min.js, 'external');array(
-  //   drupal_get_path('module', 'km_forms') . '/js/km_forms.js',
+  // $form['#attached']['js'] = array(
+  //   'https://cdnjs.cloudflare.com/ajax/libs/nanobar/0.2.1/nanobar.min.js' => array(
+  //     'type' => 'external',
+  //   ),
+  //   'https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.37/js/bootstrap-datetimepicker.min.js' => array(
+  //     'type' => 'external',
+  //   ),
+  //   drupal_get_path('module', 'models_forms') . '/js/models_forms.js',
   // );
-  // $repos = field_info_field('field_doc_repo_type');
-  // $allowed_values = list_allowed_values($repos);
-  // $form['repo'] = array(
-  //   '#type' => 'select',
-  //   '#options' => $allowed_values,
-  //   '#chosen' => TRUE,
-  //   '#multiple' => TRUE,
-  //   '#title' => 'Select repo(s)',
-  //   '#description' => 'Select the repo(s) you wish your tag(s) to be added.',
-  // );
-  // Grab a list of clients created by global user - or 'admin user' of group.
-  // $query = new EntityFieldQuery();
-  // $query->entityCondition('entity_type', 'client')
-  //   ->entityCondition('bundle', 'client')
-  //   ->propertyCondition('uid', $user->uid)
-  //   ->propertyOrderBy('title', 'ASC');
-  // $results = $query->execute();
 
-  // if (count($results['client'])) {
-  //   $clients = array();
-  //   foreach ($results['client'] as $key => $tid) {
-  //     $ew = entity_metadata_wrapper('client', $key);
-  //     $clients[$ew->getIdentifier()] = $ew->label();
-  //   }
-  // }
+  // $form['#attached']['css'] = array(
+  //   'https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.37/css/bootstrap-datetimepicker.min.css' => array(
+  //     'type' => 'external',
+  //   ),
+  // );
 
   $form['#attached']['js'] = array(
     'https://cdnjs.cloudflare.com/ajax/libs/nanobar/0.2.1/nanobar.min.js' => array(
       'type' => 'external',
     ),
-    'https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.37/js/bootstrap-datetimepicker.min.js' => array(
-      'type' => 'external',
-    ),
+    libraries_get_path('combodate') . '/' .  'combodate.js',
+    libraries_get_path('price_format') . '/' .  'jquery.price_format.2.0.min.js',
     drupal_get_path('module', 'models_forms') . '/js/models_forms.js',
   );
 
-  $form['#attached']['css'] = array(
-    'https://cdnjs.cloudflare.com/ajax/libs/bootstrap-datetimepicker/4.17.37/css/bootstrap-datetimepicker.min.css' => array(
-      'type' => 'external',
-    ),
+
+  $select_type  = '<div class="hbm-choose-type row">';
+  $select_type .= '<div class="col-xs-4 choice-box">';
+  $select_type .= '<div class="choice-type hair" data-hb_type="hair"><div class="hb-type hb-type-hair">Hair</div><span>I want to post a hair related job..</span></div>';
+  $select_type .= '</div>';
+  $select_type .= '<div class="col-xs-4 choice-box">';
+  $select_type .= '<div class="choice-type beauty" data-hb_type="beauty"><div class="hb-type">Beauty</div><span>I want to post a beauty related job..</span></div>';
+  $select_type .= '</div>';
+  $select_type .= '<div class="col-xs-4 choice-box">';
+  $select_type .= '<div class="choice-type personal" data-hb_type="personal"><div class="hb-type hb-type-personal">Personal</div><span>Make me a last minute model..</span></div>';
+  $select_type .= '</div>';
+  $select_type .= '</div>';
+
+  $form['hbm_type'] = array(
+    '#markup' => $select_type,
   );
 
   $form['wrapper'] = array(
@@ -174,11 +172,19 @@ function models_forms_create_form($form, &$form_state) {
     '#title' => isset($title) ? t('Edit Job') : t('Post a Job'),
   );
 
+  $form['wrapper']['intro'] = array(
+    '#markup' => '<p id="form-intro"></p>',
+  );
+
+
   $form['wrapper']['title'] = array(
     '#type' => 'textfield',
     '#title' => t('Job title'),
+    '#description' => t('e.g <em>I\'m looking for models on [day] for [hair cut]</em> OR if this is personal post, e.g I\'m free on [day] for [beauty treatment]..'),
     '#default_value' => isset($title) ? $title : FALSE,
     '#required' => TRUE,
+    '#maxlength' => 60,
+    '#maxlength_js' => TRUE,
   );
 
   $type = field_info_field('field_hb_gender');
@@ -186,7 +192,7 @@ function models_forms_create_form($form, &$form_state) {
   $form['wrapper']['field_hb_gender'] = array(
     '#type' => 'select',
     '#title' => t('Who\'s it for?'),
-    '#description' => t('You can select multiple.'),
+    '#description' => t('You can select multiple gender.'),
     '#options' => $options,
     '#chosen' => TRUE,
     '#multiple' => TRUE,
@@ -195,16 +201,22 @@ function models_forms_create_form($form, &$form_state) {
     // '#required' => TRUE,
   );
 
-  $type = field_info_field('field_hb_type');
-  $options = list_allowed_values($type);
+  // $type = field_info_field('field_hb_type');
+  // $options = list_allowed_values($type);
+  // $form['wrapper']['hbf_field_hb_type'] = array(
+  //   '#type' => 'select',
+  //   '#title' => t('What kind of Job is it?'),
+  //   '#options' => $options,
+  //   // '#chosen' => TRUE,
+  //   '#default_value' => isset($hb_type) ? $hb_type : FALSE,
+  //   '#disabled' => isset($hb_type) ? TRUE : FALSE,
+  //   '#required' => TRUE,
+  // );
+
   $form['wrapper']['hbf_field_hb_type'] = array(
-    '#type' => 'select',
-    '#title' => t('What kind of Job is it?'),
-    '#options' => $options,
-    '#chosen' => TRUE,
-    '#default_value' => isset($hb_type) ? $hb_type : FALSE,
-    '#disabled' => isset($hb_type) ? TRUE : FALSE,
+    '#type' => 'hidden',
     '#required' => TRUE,
+    '#attributes' => array('id' => array('hbf_field_hb_type')),
   );
 
   // HAIR --------------------------------------------------
@@ -377,7 +389,7 @@ function models_forms_create_form($form, &$form_state) {
 
   // STEP 2 ---------------
   $form['wrapper']['extra_info_btn'] = array(
-    '#markup' => '<div id="step-extra-btn" class="text-center"><btn class="btn btn-sm btn-success"><i class="fa fa-angle-down"></i> Continue</button></div>',
+    '#markup' => '<div id="step-extra-btn" class="text-center"><btn class="btn btn-sm btn-success">Continue</button></div>',
   );
 
   $form['wrapper']['step2_start'] = array(
@@ -386,18 +398,32 @@ function models_forms_create_form($form, &$form_state) {
 
   $form['wrapper']['notes'] = array(
     '#type' => 'textarea',
-    '#title' => t('Notes'),
+    '#title' => t('Some more information'),
     '#maxlength' => 350,
     '#maxlength_js' => TRUE,
     '#default_value' => isset($notes) ? $notes : FALSE,
-    '#description' => t('Tell us about your job.'),
+    '#description' => t('Tell us about your job, be as specific as you can.'),
   );
 
   $form['wrapper']['date'] = array(
     '#type' => 'textfield',
-    '#title' => 'Date/Time',
-    '#description' => t('Tell us the date and time for the job.'),
-    '#value' => isset($date) ? $date : FALSE,
+    '#title' => t('Date/Time'),
+    '#description' => t('Tell us the date and time for the job - leave blank if not needed.'),
+    '#attributes' => array(
+      'id' => array('hb-datetime'),
+      'data-template' => array('DD / MM / YYYY     HH : mm'),
+      'data-value' => array(isset($date) ? date('d-m-Y H:i', strtotime($date)) : FALSE),
+    ),
+  );
+
+  $form['wrapper']['cost'] = array(
+    '#type' => 'textfield',
+    '#title' => t('($) Costing'),
+    '#default_value' => isset($hb_cost) ? $hb_cost : 0,
+    '#description' => t('How much will the job cost? If free, leave as $0.00'),
+    '#attributes' => array(
+      'id' => array('hb-costing'),
+    ),
   );
 
   // https://www.drupal.org/node/970048
@@ -497,7 +523,7 @@ function models_forms_create_form_submit(&$form, &$form_state){
       }
     }
 
-    if ($type == 'hair') {
+    if ($type == 'hair' || $type == 'personal') {
       if(!empty($fs['hbf_field_hb_ht'])){
         foreach ($fs['hbf_field_hb_ht'] as $k => $v) {
           $node->field_hb_ht[LANGUAGE_NONE][]['value'] = $v;
@@ -515,7 +541,7 @@ function models_forms_create_form_submit(&$form, &$form_state){
       }
     }
 
-    if ($type == 'beauty') {
+    if ($type == 'beauty' || $type == 'personal') {
       if(!empty($fs['hbf_field_hb_bt'])){
         foreach ($fs['hbf_field_hb_bt'] as $k => $v) {
           $node->field_hb_bt[LANGUAGE_NONE][]['value'] = $v;
@@ -569,6 +595,15 @@ function models_forms_create_form_submit(&$form, &$form_state){
     $node->body[LANGUAGE_NONE][0]['value'] = $fs['notes'];
   }
 
+  if( !empty($fs['cost']) && ltrim($fs['cost'], '$') != 0.00 ){
+    $node->field_hb_price[LANGUAGE_NONE][0]['value'] = ltrim($fs['cost'], '$');
+    $node->field_hb_price_type[LANGUAGE_NONE][0]['value'] = 'fixed';
+  }
+  else {
+    $node->field_hb_price[LANGUAGE_NONE][0]['value'] = 0.00;
+    $node->field_hb_price_type[LANGUAGE_NONE][0]['value'] = 'free';
+  }
+
   // Date.
   if(!empty($fs['date'])){
     $date = format_date(strtotime( str_replace('/', '-', $fs['date'])), 'custom', 'Y-m-d H:i:s', 'UTC');
@@ -585,42 +620,14 @@ function models_forms_create_form_submit(&$form, &$form_state){
     $node->field_hb_location[LANGUAGE_NONE][0]['postal_code'] = $fs['location']['postal_code'] ? $fs['location']['postal_code'] : FALSE;
     $node->field_hb_location[LANGUAGE_NONE][0]['country'] = $fs['location']['country'] ? $fs['location']['country'] : FALSE;
   }
-
   node_save($node);
-  if (!isset($form_state['job_update'])) {
-    drupal_set_message(t('Your Job: ' . $fs['title'] . ' has been posted '), 'info', FALSE);
-  }
-  else {
-    drupal_set_message(t('Your Job: ' . $fs['title'] . ' has been updated '), 'success', FALSE);
-  }
+
+  // if (!isset($form_state['job_update'])) {
+  //   drupal_set_message(t('Your Job: ' . $fs['title'] . ' has been posted '), 'info', FALSE);
+  // }
+  // else {
+  //   drupal_set_message(t('Your Job: ' . $fs['title'] . ' has been updated '), 'success', FALSE);
+  // }
+  // dpm($form_state);
   drupal_goto('node/' .$node->nid);
 }
-
-  // // Client.
-  // if(!empty($fs['client'])){
-  //   // Make new client entity.
-  //   $ew = entity_create('client', array('type' => 'client'));
-  //   $ew->title = strtolower($fs['client']);
-  //   $ew->created = strtotime('now');
-  //   $ew->changed = strtotime('now');
-  //   $ew->uid = $user->uid;
-  //   $ew->save();
-  //   $node->field_e_client[LANGUAGE_NONE][0]['target_id'] = $ew->id;
-  // }
-  // File.
-  // if(!empty($fs['img'])){
-  //   $file = file_load($fs['img']);
-  //   $node->field_e_image = array (
-  //     LANGUAGE_NONE => array (
-  //       0 => array (
-  //         'fid' => $file->fid,
-  //         'filename' => $file->filename,
-  //         'filemime' => $file->filemime,
-  //         'uid' => 1,
-  //         'uri' => $file->uri,
-  //         'status' => 1,
-  //         'display' => 1
-  //       )
-  //     )
-  //   );
-  // }

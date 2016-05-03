@@ -12,6 +12,10 @@ function tweaks_block_info() {
     'info' => t('HBM - Contact Us Button'),
     'cache' => DRUPAL_CACHE_GLOBAL,
   );
+  $blocks['user_deets'] = array(
+    'info' => t('HBM - User Details'),
+    'cache' => DRUPAL_CACHE_GLOBAL,
+  );
   return $blocks;
 }
 
@@ -25,6 +29,10 @@ function tweaks_block_view($delta = '') {
       $block['subject'] = t('Contact Us Button');
       $block['content'] = theme('contact_us_button');
     break;
+    case 'user_deets':
+      $block['subject'] = t('User Details');
+      $block['content'] = theme('user_details');
+    break;
   }
   return $block;
 }
@@ -36,6 +44,9 @@ function tweaks_theme() {
   return array (
     'contact_us_button' => array(
       'template' => 'templates/contact-us-button',
+    ),
+    'user_details' => array(
+      'template' => 'templates/user-details',
     ),
   );
 }
@@ -52,6 +63,28 @@ function template_preprocess_contact_us_button(&$vars) {
   );
   $vars['contactus_form'] = theme('bootstrap_modal', $modal_options);
   $vars['contactus_btn'] = l(t('Contact Us'), '#', array('attributes' => array('data-toggle' => array('modal'), 'data-target' => array('#contactus-popup'), 'class' => array('contact-btn'))));
+}
+
+/**
+ * Template preprocess for Contact Us Button.
+ */
+function template_preprocess_user_details(&$vars) {
+  $uw = entity_metadata_wrapper('user', arg(1));
+  $vars['name'] = $uw->field_my_name->value() ? '<h2>' . $uw->field_my_name->value() . '</h2>' : FALSE;
+  $vars['username'] = '<h3>' . $uw->label() . '</h2>';
+  if ($uw->field_my_address->value()) {
+    $add = '<p><i class="fa fa-map-marker"></i> ';
+    $add .= $uw->field_my_address->value()['premise'] ? $uw->field_my_address->value()['premise'] . ', ' : FALSE;
+    $add .= $uw->field_my_address->value()['administrative_area'] ? $uw->field_my_address->value()['administrative_area'] . ', ' : FALSE;
+    $add .= $uw->field_my_address->value()['locality'] ? $uw->field_my_address->value()['locality'] : FALSE;
+  }
+  else {
+    $add = FALSE;
+  }
+  $vars['add'] = $add;
+  $vars['web'] = $uw->field_my_web->value() ? '<p>' . l($uw->field_my_web->value()['url'], $uw->field_my_web->value()['url'], array( 'external' => TRUE, 'attributes' => array('rel' => array('nofollow')))) . '</p>' : FALSE;
+  // $vars['company'] = $uw->field_my_company->value() ? l($uw->field_my_company->value(), $uw->field_my_company->value(), array( 'external' => TRUE)) : FALSE;
+  // $vars['msg'] = $uw->field_my_web->value() ? l($uw->field_my_web->value(), $uw->field_my_web->value());
 
 }
 
@@ -70,6 +103,12 @@ function tweaks_ctools_plugin_directory($module, $type) {
 function tweaks_form_alter(&$form, &$form_state, $form_id) {
   if ($form_id == 'privatemsg_list') {
     // dpm($form, $form_id);
+  }
+  if ($form_id == 'privatemsg_new') {
+    $p = drupal_get_query_parameters();
+    if (isset($p['to'])) {
+      $form['recipient']['#value'] = $p['to'];
+    }
   }
   if ($form_id == 'views_exposed_form') {
     if (!empty($form['field_hb_geofield_latlon_op'])) {
@@ -148,10 +187,15 @@ function tweaks_form_alter(&$form, &$form_state, $form_id) {
  */
 function tweaks_get_hb_cost($nw) {
     $cost_class = FALSE;
-    if ($nw->field_hb_price->value()) {
-      $cost = '<i class="fa fa-dollar"></i> ' . $nw->field_hb_price->value();
-    } else {
-      $cost = '<i class="fa fa-dollar"></i> 19.55';
+    if ($nw->field_hb_type->value() != 'personal') {
+      if ($nw->field_hb_price->value()) {
+        $cost = '<i class="fa fa-dollar"></i> ' . $nw->field_hb_price->value();
+      } else {
+        $cost = '<i class="fa fa-dollar"></i> 19.55';
+      }
+    }
+    else {
+      $cost = 'Last Minute Model';
     }
     if ($nw->field_hb_price_type->value()) {
       switch ($nw->field_hb_price_type->value()) {
@@ -175,3 +219,84 @@ function tweaks_get_hb_cost($nw) {
     }
     return '<span class="hb-cost ' . $cost_class . '">' . $cost . $pt . '</span>';
 }
+
+/**
+ * Implementation of hook_action_info().
+ */
+function tweaks_action_info() {
+  return array(
+    'tweaks_assign_job' => array(
+      'label' => t('Pass list of user ids as arguments to an action'),
+      'type' => 'entity',
+      'aggregate' => TRUE,
+      'configurable' => FALSE,
+      'hooks' => array(),
+      'triggers' => array('any'),
+    ),
+  );
+}
+
+/**
+ * Retrieve id's and assign to job.
+ */
+function tweaks_assign_job($entities, $context = array()) {
+  // $arguments = implode(',', array_keys($entities));
+  global $user;
+  $uw = entity_metadata_wrapper('user', $user->uid);
+  $nw = entity_metadata_wrapper('node', arg(1));
+
+  $nw->field_hb_users = array();
+  $i = 0;
+  foreach ($entities as $uid => $value) {
+    $nw->field_hb_users->offsetSet($i, $uid);
+    // rules_invoke_component('rules_pm_job_request', $msg, $user, $nw->author->value(), $nw->value(), $subject);
+    $i++;
+  }
+  $nw->field_hb_assigned->set(1);
+  $nw->save();
+  drupal_set_message(t('Hey !name, good news! Your job has been confirmed and your selected individual(s) have been notified!</br><strong>What happens now?</strong> When your job is complete, log back in to leave feedback', array('!name' => $uw->field_first_name->value())), 'info', FALSE);
+}
+
+/**
+ * Generate profile picture from uri;
+ * @param  Object $mypic Picture from user object.
+ * @param  String $uri   Picture uri.
+ */
+function tweaks_get_profile_picture($mypic, $uri) {
+  // $mypic = $uw->value()->picture;
+  if($mypic){
+    $pic = '<div class="my-image img-circle">' . theme('image_style', array('style_name' => 'profile', 'path' => $uri, 'attributes' => array('class' => array('img-circle')))).'</div>';
+  } else {
+    $pic = '<div class="my-image img-circle">' . theme('image_style', array('style_name' => 'profile', 'path' => 'public://pictures/picture-default.png', 'attributes' => array('class' => array('img-circle')))).'</div>';
+  }
+  return $pic;
+}
+
+/**
+ * Generate user profile url.
+ */
+function tweaks_get_profile_url($pic, $uid) {
+  return l($pic, 'user/' . $uid, array('html' => true, 'attributes' => array('class' => array('author-pic'))));
+}
+
+/**
+ * Generate user profile introduction.
+ */
+function tweaks_get_profile_intro($user_entity) {
+  $job_details  = '<div class="hb-time">';
+  $job_details .= '<span>(' . l($user_entity->label(), 'user/' . $user_entity->getIdentifier()) . ')</span>';
+  $job_details .= '</div>';
+  $job_details .= '<div>';
+  $job_details .= '<span>' . t('joined ') . format_date($user_entity->created->value(), 'timeago', 'Y-m-d H:i:s', 'UTC') . '</span>';
+  $job_details .= '</div>';
+  return $job_details;
+}
+
+/**
+ * Get feedback amount and link.
+ */
+function tweaks_get_feedback_amount($user_entity) {
+  $total = $user_entity->field_my_total_feedback->value() ? $user_entity->field_my_total_feedback->value() : 0;
+  return '<div class="hb-feedback-score">'. l($total, 'user/' . $user_entity->getIdentifier() . '/feedback') . ' ' . t('feedback') . '</div>';
+}
+

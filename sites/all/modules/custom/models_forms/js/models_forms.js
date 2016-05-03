@@ -5,33 +5,44 @@
 
     init: function(context) {
       var options = {
-        bg: 'yellow',
+        bg: '#172A3A',
         id: 'mynano'
       };
       hbmf.nanobar = new Nanobar( options );
       hbmf.formSubmit();
 
-      var dateInput = $("#edit-date");
-      dateInput.parent().css("position", "relative");
-
-      var dd = moment("31/05/2016 09:00", "DD/MM/YYYY HH:mm");
-      var dd2 = "31/05/2016 09:00";
-      dateInput.datetimepicker({
-        format: 'DD/MM/YYYY HH:mm',
-        defaultDate: dd,
-        minDate: moment(),
-        maxDate: moment().add(1, 'year'),
+      $('#hb-datetime').combodate({
+        smartDays: true,
+        firstItem: 'name',
+        minYear: moment().format('YYYY'),
+        maxYear: moment().format('YYYY')
       });
+
+      $('#hb-costing').priceFormat({
+          prefix: '$',
+          thousandsSeparator: ''
+      });
+
+      // var dateInput = $("#edit-date");
+      // dateInput.parent().css("position", "relative");
+
+      // var dd = moment("31/05/2016 09:00", "DD/MM/YYYY HH:mm");
+      // var dd2 = "31/05/2016 09:00";
+      // dateInput.datetimepicker({
+      //   format: 'DD/MM/YYYY HH:mm',
+      //   defaultDate: dd,
+      //   minDate: moment(),
+      //   maxDate: moment().add(1, 'year'),
+      // });
       // dateInput.data("DateTimePicker").defaultDate("31/05/2016 09:00")
 
-console.log(Drupal.settings.form_type);
       if (!Drupal.settings.form_type) {
         hbmf.formSelectType();
         hbmf.formSelectHairType();
         hbmf.formSelectBeautyType();
         hbmf.formExtraInfo();
         $('#edit-location-country').attr('disabled', 'disabled');
-        $("#edit-location-administrative-area, #edit-location-country").chosen();
+        // $("#edit-location-administrative-area, #edit-location-country").chosen();
 
         if (!$('.has-error').length) {
           $('#hbf-field_hb_ht, #hbf-field_hb_bt, .hide-hair, .hide-beauty, #step-extra, #step-extra-btn').hide();
@@ -46,11 +57,9 @@ console.log(Drupal.settings.form_type);
           }
         }
       } else {
-        if (Drupal.settings.form_type == 'hair') {
-          $('.hide-beauty, #step-extra-btn').hide();
-        } else {
-          $('.hide-hair, #step-extra-btn').hide();
-        }
+        $('.hbm-choose-type, #step-extra-btn').hide();
+        $('#models-forms-create-form #edit-wrapper').show();
+        hbmf.showTypeSelected(Drupal.settings.form_type, true);
       }
 
       $('.btn').on('click', function () {
@@ -59,24 +68,59 @@ console.log(Drupal.settings.form_type);
           $btn.button('reset');
         }, 500);
       })
+    },
 
+    showTypeSelected : function(type, edit = false) {
+      $('.hide-beauty, .hide-hair').hide();
+      $('.form-item-field-hb-gender').show();
+      hbmf.nanobar.go(100);
+      $('#hbf_field_hb_type').val(type);
+      if (type == 'hair') {
+        var s = edit ? 'Edit your hair job below - time remaining: 1.30h.' : 'Hi there! You are posting a hair job - please fill in the form below to continue..';
+        $('#form-intro').removeClass('type-b type-p').addClass('type-h').html(s);
+        setTimeout(function(){
+          $('#hbf-field_hb_ht').fadeIn();
+        }, 500);
+      }
+      if (type == 'beauty') {
+        var s = edit ? 'Edit your beauty job below - time remaining: 1.30h.' : 'Hey! You are posting a beauty job - please fill in the form below to continue..';
+        $('#form-intro').removeClass('type-h type-p').addClass('type-b').html(s);
+        setTimeout(function(){
+          $('#hbf-field_hb_bt').fadeIn();
+        }, 500);
+      }
+      if (type == 'personal') {
+        var s = edit ? 'Edit your personal job below - time remaining: 1.30h.' : 'Let\'s get started! You are posting about a personal job, fill in the form below to become a last minute model..';
+        $('#form-intro').removeClass('type-b type-h').addClass('type-p').html(s);
+        $('.form-item-field-hb-gender').hide();
+        setTimeout(function(){
+          $('#hbf-field_hb_ht, #hbf-field_hb_bt').fadeIn();
+        }, 500);
+      }
     },
 
     formSelectType : function() {
-      $('#edit-hbf-field-hb-type').change(function() {
-        $('.hide-beauty, .hide-hair').hide();
-        hbmf.nanobar.go(100);
 
-        if ( $(this).find('option:selected').val() == 'hair' ) {
-          setTimeout(function(){
-            $('#hbf-field_hb_ht').fadeIn();
-          }, 500);
-        }
-        if ( $(this).find('option:selected').val() == 'beauty' ) {
-          setTimeout(function(){
-            $('#hbf-field_hb_bt').fadeIn();
-          }, 500);
-        }
+      $('.hbm-choose-type .choice-box .choice-type').on('click', function(){
+        $('.hbm-choose-type .choice-box .choice-type').addClass('inactive');
+        $(this).removeClass('inactive').addClass('active');
+        $('#models-forms-create-form #edit-wrapper').show();
+        $('#edit-hbf-field-hb-type').val($(this).data('hb_type'));
+        hbmf.showTypeSelected($(this).data('hb_type'));
+      });
+
+      $('#edit-hbf-field-hb-type').change(function() {
+        hbmf.showTypeSelected($(this).find('option:selected').val());
+        // if ( $(this).find('option:selected').val() == 'hair' ) {
+        //   setTimeout(function(){
+        //     $('#hbf-field_hb_ht').fadeIn();
+        //   }, 500);
+        // }
+        // if ( $(this).find('option:selected').val() == 'beauty' ) {
+        //   setTimeout(function(){
+        //     $('#hbf-field_hb_bt').fadeIn();
+        //   }, 500);
+        // }
         if ( !$(this).find('option:selected').val() ) {
           $('#hbf-field_hb_ht, #hbf-field_hb_bt').hide();
         }

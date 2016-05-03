@@ -21,7 +21,12 @@ function models_forms_request_form($form, &$form_state){
     }
   }
 
-  $desc = !isset($requested) ? t('Hey !name, to show you\'re interested in this job, leave a message for the job owner below and hit <strong>sign me up</strong>!', array('!name' => $uw->field_first_name->value())) : t('To remove your request select <strong>remove request</strong> below - we\'ll let the job owner know.', array('!name' => $uw->field_first_name->value()));
+  if ($nw->field_hb_type->value() != 'personal') {
+    $desc = !isset($requested) ? t('Hey !name, to show you\'re interested in this job, leave a message for the job owner below and hit <strong>sign me up</strong>!', array('!name' => $uw->field_first_name->value())) : t('To remove your request select <strong>remove request</strong> below - we\'ll let the job owner know.', array('!name' => $uw->field_first_name->value()));
+  }
+  else {
+    $desc = !isset($requested) ? t('Hey !name, if you\'re interested in this last minute model and want to offer a job, get in touch below and hit <strong>send</strong>!', array('!name' => $uw->field_first_name->value())) : t('Hey !name, your message has been sent, if you\'d like to remove your job offer select <strong>remove request</strong> - we\'ll let the job owner know.', array('!name' => $uw->field_first_name->value()));
+  }
   $form['form_description'] = array(
     '#markup' => '<p>'.$desc.'</p>',
   );
@@ -34,15 +39,28 @@ function models_forms_request_form($form, &$form_state){
     );
   }
 
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => !isset($requested) ? t('sign me up') : t('remove request'),
-    '#attributes' => array(
-      'class' => !isset($requested) ? array('btn-success') : array('btn-danger'),
-      'data-loading-text' => array("Sending request.."),
-      'data-complete-text' => array('Sent!'),
-    ),
-  );
+  if ($nw->field_hb_type->value() != 'personal') {
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => !isset($requested) ? t('sign me up') : t('remove request'),
+      '#attributes' => array(
+        'class' => !isset($requested) ? array('btn-success') : array('btn-danger'),
+        'data-loading-text' => array("Sending request.."),
+        'data-complete-text' => array('Sent!'),
+      ),
+    );
+  }
+  else {
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => !isset($requested) ? t('send message') : t('remove job offer'),
+      '#attributes' => array(
+        'class' => !isset($requested) ? array('btn-success') : array('btn-danger'),
+        'data-loading-text' => array("Sending message.."),
+        'data-complete-text' => array('Sent!'),
+      ),
+    );
+  }
   return $form;
 }
 
@@ -50,6 +68,7 @@ function models_forms_request_form_submit($form, &$form_state){
   global $user;
   $nw = entity_metadata_wrapper('node', $form_state['nid']);
   $uw = entity_metadata_wrapper('user', $user->uid);
+  $subject = $nw->field_hb_type->value() != 'personal' ? t('Job Request') : t('Job Offer');
   $msg = isset($form_state['values']['msg']) ? $form_state['values']['msg'] : false;
   $removed = 1;
   if(sizeof($nw->field_hb_users->value()) > 0){
@@ -63,20 +82,29 @@ function models_forms_request_form_submit($form, &$form_state){
     }
     if($flag == 0){
       $nw->field_hb_users->offsetSet(sizeof($nw->field_hb_users->value()), $user->uid);
-      rules_invoke_component('rules_pm_job_request', $msg, $user, $nw->author->value(), $nw->value());
+      rules_invoke_component('rules_pm_job_request', $msg, $user, $nw->author->value(), $nw->value(), $subject);
       $removed = 0;
     }
   } else {
     $nw->field_hb_users->offsetSet(0, $user->uid);
-    rules_invoke_component('rules_pm_job_request', $msg, $user, $nw->author->value(), $nw->value());
+    rules_invoke_component('rules_pm_job_request', $msg, $user, $nw->author->value(), $nw->value(), $subject);
     $removed = 0;
   }
 
   $nw->save();
 
-  if($removed == 1){
-    drupal_set_message(t('Hey !name, your job request has now been removed - we\'ve let the job owner know! Check out the <strong>job board</strong> for more hair and beauty options.', array('!name' => $uw->field_first_name->value())), 'info', FALSE);
-  } else {
-    drupal_set_message(t('Hey !name, good news - your request has been sent! Keep an eye on your <strong>job requests</strong> for updates - you will be contacted soon.', array('!name' => $uw->field_first_name->value())), 'info', FALSE);
+  if ($nw->field_hb_type->value() != 'personal') {
+    if($removed == 1){
+      drupal_set_message(t('Hey !name, your job request has now been removed - we\'ve let the job owner know! Check out the <strong>job board</strong> for more hair and beauty options.', array('!name' => $uw->field_first_name->value())), 'info', FALSE);
+    } else {
+      drupal_set_message(t('Hey !name, good news - your request has been sent! Keep an eye on your <strong>job requests</strong> for updates - you will be contacted soon.', array('!name' => $uw->field_first_name->value())), 'info', FALSE);
+    }
+  }
+  else {
+    if($removed == 1){
+      drupal_set_message(t('Hey !name, your job offer has now been removed - we\'ve let the last minute model know! Check out the <strong>job board</strong> for more last minute models.', array('!name' => $uw->field_first_name->value())), 'info', FALSE);
+    } else {
+      drupal_set_message(t('Hey !name, your message has been sent! Keep an eye on your <strong>job requests</strong> for updates - you will be contacted soon.', array('!name' => $uw->field_first_name->value())), 'info', FALSE);
+    }
   }
 }

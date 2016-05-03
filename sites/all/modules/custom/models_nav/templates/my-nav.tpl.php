@@ -1,3 +1,3 @@
 <?php
-  print $my_nav;
+  print $nav_2 . $my_nav;
 ?>
