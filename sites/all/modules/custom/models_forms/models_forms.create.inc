@@ -11,7 +11,7 @@
  */
 function models_forms_create_form($form, &$form_state) {
   global $user;
-
+// dpm('g');
   if (arg(2) == 'edit') {
     if (is_numeric(arg(1))) {
       $nw = entity_metadata_wrapper('node', arg(1));
@@ -21,11 +21,11 @@ function models_forms_create_form($form, &$form_state) {
 
         $title = $nw->label();
         $notes = $nw->body->value() ? $nw->body->value()['value'] : FALSE;
-        $hb_type = $nw->field_hb_type->value() ? $nw->field_hb_type->value() : FALSE;
+        $form_state['hb_type'] = $nw->field_hb_type->value() ? $nw->field_hb_type->value() : FALSE;
         $hb_cost = $nw->field_hb_price->value() ? $nw->field_hb_price->value() : FALSE;
 
         $form_state['job_update'] = $nw->getIdentifier();
-        drupal_add_js(array('form_type' => $hb_type), 'setting');
+        drupal_add_js(array('form_type' => $form_state['hb_type']), 'setting');
 
         if ($nw->field_hb_gender->value()) {
           $field_hb_gender = array();
@@ -112,8 +112,16 @@ function models_forms_create_form($form, &$form_state) {
           }
         }
 
-        $date = $nw->field_hb_time->value() ? format_date($nw->field_hb_time->value(), 'custom', 'Y-m-d H:i:s') : FALSE;
-        // $file = $nw->field_e_image->value() ? $nw->field_e_image->value()['fid'] : FALSE;
+        $date_array = array();
+        if ($nw->field_hb_time->value()) {
+          foreach ($nw->field_hb_time->getIterator() as $k => $v) {
+            $date_array[] = format_date($v->value(), 'custom', 'Y-m-d H:i:s');
+          }
+        }
+
+        $hb_link = $nw->field_hb_link->value() ? $nw->field_hb_link->value()['url'] : FALSE;
+        $hb_company = $nw->field_hb_company->value() ? $nw->field_hb_company->value() : FALSE;
+
         $dependent_locality = $nw->field_hb_location->value()['dependent_locality'] ? $nw->field_hb_location->value()['dependent_locality'] : FALSE;
         $thoroughfare = $nw->field_hb_location->value()['thoroughfare'] ? $nw->field_hb_location->value()['thoroughfare'] : FALSE;
         $premise = $nw->field_hb_location->value()['premise'] ? $nw->field_hb_location->value()['premise'] : FALSE;
@@ -145,6 +153,11 @@ function models_forms_create_form($form, &$form_state) {
     'https://cdnjs.cloudflare.com/ajax/libs/nanobar/0.2.1/nanobar.min.js' => array(
       'type' => 'external',
     ),
+    'http://maps.googleapis.com/maps/api/js?libraries=places' => array(
+      'type' => 'external',
+    ),
+    libraries_get_path('geocomplete') . '/' . 'jquery.geocomplete.min.js',
+    drupal_get_path('module', 'models_forms') . '/js/models_forms_google_complete.js',
     libraries_get_path('combodate') . '/' .  'combodate.js',
     libraries_get_path('price_format') . '/' .  'jquery.price_format.2.0.min.js',
     drupal_get_path('module', 'models_forms') . '/js/models_forms.js',
@@ -167,24 +180,30 @@ function models_forms_create_form($form, &$form_state) {
     '#markup' => $select_type,
   );
 
+  // $form['#theme'] = array('overwrite_create_job');
+
   $form['wrapper'] = array(
     '#type' => 'fieldset',
     '#title' => isset($title) ? t('Edit Job') : t('Post a Job'),
+  );
+
+  $form['wrapper']['heading1'] = array(
+    '#markup' => '<h2><span>1.</span> Job Information</h2>',
   );
 
   $form['wrapper']['intro'] = array(
     '#markup' => '<p id="form-intro"></p>',
   );
 
-
   $form['wrapper']['title'] = array(
     '#type' => 'textfield',
     '#title' => t('Job title'),
-    '#description' => t('e.g <em>I\'m looking for models on [day] for [hair cut]</em> OR if this is personal post, e.g I\'m free on [day] for [beauty treatment]..'),
+    '#description' => t('Give us a quick overview in 60 characters e.g:'),
     '#default_value' => isset($title) ? $title : FALSE,
-    '#required' => TRUE,
+    // '#required' => TRUE,
     '#maxlength' => 60,
     '#maxlength_js' => TRUE,
+    '#suffix' => '<ul class="help-points"><li><em>Models needed for [hair treatment] on [date]</em></li><li>Free [beauty treatment] this weekend!</li><li>Last minute model looking for [hair/beauty treatment]</li></ul>',
   );
 
   $type = field_info_field('field_hb_gender');
@@ -215,7 +234,7 @@ function models_forms_create_form($form, &$form_state) {
 
   $form['wrapper']['hbf_field_hb_type'] = array(
     '#type' => 'hidden',
-    '#required' => TRUE,
+    // '#required' => TRUE,
     '#attributes' => array('id' => array('hbf_field_hb_type')),
   );
 
@@ -396,34 +415,73 @@ function models_forms_create_form($form, &$form_state) {
     '#markup' => '<div id="step-extra">',
   );
 
+  $form['wrapper']['heading2'] = array(
+    '#markup' => '<h2><span>2.</span> Description</h2>',
+  );
+
+  $wysiwyg_js['wysiwyg']['configs']['tinymce']['formatfiltered_html'] = array(
+    'menubar' => FALSE,
+    'statusbar' => FALSE,
+  );
+
+  drupal_add_js($wysiwyg_js, 'setting');
+
   $form['wrapper']['notes'] = array(
-    '#type' => 'textarea',
-    '#title' => t('Some more information'),
-    '#maxlength' => 350,
-    '#maxlength_js' => TRUE,
+    '#type' => 'text_format',
+    '#title' => t('Tell us about your job, be as specific as you can'),
+    // '#maxlength' => 600,
+    // '#maxlength_js' => TRUE,
     '#default_value' => isset($notes) ? $notes : FALSE,
-    '#description' => t('Tell us about your job, be as specific as you can.'),
+    '#format' => 'filtered_html'
+    // '#description' => t('Tell us about your job, be as specific as you can.'),
   );
 
-  $form['wrapper']['date'] = array(
+
+  if (!isset($form_state['job_update'])) {
+    $form['wrapper']['field_hb_pics'] = array(
+      '#type' => 'managed_file',
+      '#default_value' => isset($file) ? $file : FALSE,
+      '#title' => t('Image'),
+      '#description' => t('You can upload more on the next page - jpg jpeg png / 2MB max'),
+      '#upload_validators' => array(
+        'file_validate_extensions' => array('jpg jpeg png'),
+        'file_validate_size' => array(2000000),
+      ),
+      '#upload_location' => 'public://',
+    );
+  }
+
+  // $form['wrapper']['contact_number'] = array(
+  //   '#type' => 'textfield',
+  //   '#title' => t('Contact Number'),
+  //   '#default_value' => isset($hb_company) ? $hb_company : '',
+  //   '#description' => t('Add a contact number if required'),
+  // );
+
+  $form['wrapper']['link'] = array(
     '#type' => 'textfield',
-    '#title' => t('Date/Time'),
-    '#description' => t('Tell us the date and time for the job - leave blank if not needed.'),
-    '#attributes' => array(
-      'id' => array('hb-datetime'),
-      'data-template' => array('DD / MM / YYYY     HH : mm'),
-      'data-value' => array(isset($date) ? date('d-m-Y H:i', strtotime($date)) : FALSE),
-    ),
+    '#title' => t('Web link'),
+    '#default_value' => isset($hb_link) ? $hb_link : '',
+    '#attributes' => array('placeholder' => 'www.example.com'),
+    '#description' => t('Add a web link for further information'),
   );
 
-  $form['wrapper']['cost'] = array(
+  $form['wrapper']['company'] = array(
     '#type' => 'textfield',
-    '#title' => t('($) Costing'),
-    '#default_value' => isset($hb_cost) ? $hb_cost : 0,
-    '#description' => t('How much will the job cost? If free, leave as $0.00'),
+    '#title' => t('Company/Studio/College name'),
+    '#default_value' => isset($hb_company) ? $hb_company : '',
+    '#description' => t('Where\'s it taking place? Hair Dressers? Beauticians?'),
+  );
+
+  $form['wrapper']['geocomplete'] = array(
+    '#type' => 'textfield',
+    // '#title' => 'Enter an address',
+    '#description' => t('If your address is unrecognised, try the manual option below.'),
     '#attributes' => array(
-      'id' => array('hb-costing'),
+      'id' => array('geocomplete'),
     ),
+    '#prefix' => '<label class="control-label" for="geocomplete">' . t('Location lookup') . '</label>',
+    '#suffix' => '<div class="map_canvas"></div><!--<p><a href="#" class="geocomplete-manual">' . t('+ add manual location') . '</a></p>-->',
   );
 
   // https://www.drupal.org/node/970048
@@ -447,26 +505,117 @@ function models_forms_create_form($form, &$form_state) {
     '#available_countries' => array('AU'),
   );
 
-  // $form['wrapper']['img'] = array(
-  //   '#type' => 'managed_file',
-  //   '#default_value' => isset($file) ? $file : FALSE,
-  //   '#title' => t('Attachments'),
-  //   '#description' => t('Upload an event image'),
-  //   '#upload_validators' => array(
-  //     'file_validate_extensions' => array('jpg jpeg png'),
-  //     'file_validate_size' => array(5000000),
-  //   ),
-  //   '#upload_location' => 'public://',
-  // );
+  $form['wrapper']['heading3'] = array(
+    '#markup' => '<h2><span>3.</span> Cost and Dates</h2>',
+  );
 
-  $form['wrapper']['submit'] = array(
+  $form['wrapper']['cost'] = array(
+    '#type' => 'textfield',
+    '#title' => t('($) Costing'),
+    '#default_value' => isset($hb_cost) ? $hb_cost : 0,
+    '#description' => t('How much will the job cost? If free, leave as $0.00 - If personal, how much are you willing to pay?'),
+    '#attributes' => array(
+      'id' => array('hb-costing'),
+    ),
+  );
+
+  $form['wrapper']['date_wrapper'] = array(
+    '#type' => 'fieldset',
+    '#prefix' => '<div id="date-wrapper-ajax" class="form-group">',
+    '#suffix' => '</div>',
+  );
+
+  if (isset($form_state['job_update'])) {
+    if (!isset($form_state['date_count'])) {
+      $form_state['date_count'] = sizeof($date_array);
+    }
+
+    $form['wrapper']['date_wrapper']['date_label'] = array(
+      '#markup' => '<label>' . t('Appointments') . '</label>',
+    );
+    $previous_appointment = $form_state['date_count'] - 2 ;
+  }
+  else {
+    $form_state['date_count'] = !isset($form_state['date_count']) ? 1 : $form_state['date_count'];
+    $previous_appointment = FALSE;
+  }
+
+  for ($i = 0; $i < $form_state['date_count']; $i++) {
+    if ($previous_appointment) {
+      if (!empty($date_array[$i])) {
+        $date_value = date('d-m-Y H:i', strtotime($date_array[$i]));
+      }
+      else {
+        if ($i == $previous_appointment) {
+          $date_value = date('d-m-Y H:i', strtotime($form_state['values']['date_' . $previous_appointment]));
+        }
+      }
+    }
+    else {
+      $date_value = date('d-m-Y 09:00', strtotime('now'));
+    }
+
+    $form['wrapper']['date_wrapper']['date_' . $i] = array(
+      '#type' => 'textfield',
+      '#title' => t('!amount. Date / Time', array('!amount' => $i + 1)),
+      '#description' => $i+1 == $form_state['date_count'] ? t('Tell us the date and time for the job - leave blank if not needed.') : FALSE,
+      '#attributes' => array(
+        'id' => array('hb-datetime-' . $i),
+        'data-template' => array('DD / MMM / YYYY     HH : mm'),
+        'data-value' => array($date_value),
+      ),
+      '#prefix' => '<div class="row set-date"><div class="col-sm-12">',
+      '#suffix' => '</div></div>',
+    );
+  }
+
+  $form['wrapper']['date_wrapper']['add_more'] = array(
     '#type' => 'submit',
-    '#value' => isset($hb_type) ? t('Update Job') : t('Post Job'),
+    '#value' => 'add',
+    '#name' => 'add',
+    '#submit' => array('add_a_date'),
+    '#ajax' => array(
+      'callback' => 'models_forms_create_form_ajax',
+      'wrapper' => 'date-wrapper-ajax',
+      'method' => 'replace',
+      // 'effect' => 'fade',
+    ),
+    '#attributes' => array(
+      'class' => array('btn-xs'),
+    ),
+    '#prefix' => '<div class="row"><div class="col-sm-12">',
+  );
+
+  $form['wrapper']['date_wrapper']['remove_more'] = array(
+    '#type' => 'submit',
+    '#value' => t('remove'),
+    '#name' => 'remove',
+    '#submit' => array('remove_a_date'),
+    '#ajax' => array(
+      'callback' => 'models_forms_create_form_ajax',
+      'wrapper' => 'date-wrapper-ajax',
+      'method' => 'replace',
+      // 'effect' => 'fade',
+    ),
+    '#attributes' => array(
+      'class' => array('btn-danger btn-xs'),
+    ),
+    '#suffix' => '</div></div>',
+  );
+
+  $h4 = !empty($form_state['hb_type']) ? t('Update Your Job') : t('Post Your Job');
+  $form['wrapper']['heading4'] = array(
+    '#markup' => '<h2><span>4.</span> ' . $h4 . '</h2><p>'. t('You can perform further updates on the next page and when you\'re ready, hit publish to get your page live!') . '</p>',
+  );
+  $form['wrapper']['submit_btn'] = array(
+    '#type' => 'submit',
+    '#name' => 'submit_job',
+    '#value' => !empty($form_state['hb_type']) ? t('Update Job') : t('Post Job') ,
     // '#disabled' => sizeof($nw->field_t_users->value()) <= $fbk_size ? TRUE : FALSE,
     '#attributes' => array(
       // 'class' => !isset($requested) ? array('btn-success') : array('btn-danger'),
-      'class' => array('btn-success'),
-      'data-loading-text' => isset($hb_type) ? array("Updating..") : array("Posting.."),
+      'class' => array('btn-success btn-block'),
+      // 'data-loading-text' => isset($form_state['hb_type']) ? array("Updating..") : array("Posting.."),
       'data-complete-text' => array('Saved!'),
     ),
     '#prefix' => '<div id="step-submit">',
@@ -474,15 +623,35 @@ function models_forms_create_form($form, &$form_state) {
   );
 
   $form['wrapper']['step2_end'] = array('#markup' => '</div>');
-
   return $form;
 }
+
+// Ajax call to upload more brief attachments
+function add_a_date($form, &$form_state) {
+  $form_state['date_count']++;
+  $form_state['rebuild'] = TRUE;
+  $form_state['ajaxify'] = TRUE;
+}
+
+function remove_a_date($form, &$form_state) {
+  if ($form_state['date_count'] > 1) {
+    $form_state['date_count']--;
+    $form_state['rebuild'] = TRUE;
+  }
+}
+
+function models_forms_create_form_ajax($form, $form_state) {
+  return $form['wrapper']['date_wrapper'];
+}
+
 
 /**
  * Custom submit function for models_forms_create_form_submit.
  */
 function models_forms_create_form_submit(&$form, &$form_state){
   global $user;
+
+  // dpm($form_state, 'fs');
 
   $fs = $form_state['values'];
 
@@ -592,10 +761,29 @@ function models_forms_create_form_submit(&$form, &$form_state){
 
   // Body.
   if(!empty($fs['notes'])){
-    $node->body[LANGUAGE_NONE][0]['value'] = $fs['notes'];
+    $node->body[LANGUAGE_NONE][0]['value'] = $fs['notes']['value'];
+    $node->body[LANGUAGE_NONE][0]['format'] = 'filtered_html';
   }
 
-  if( !empty($fs['cost']) && ltrim($fs['cost'], '$') != 0.00 ){
+  if(!empty($fs['link'])){
+    $url = $fs['link'];
+    if (!preg_match("~^(?:f|ht)tps?://~i", $url)) {
+        $url = "http://" . $fs['link'];
+    }
+    if (filter_var($url, FILTER_VALIDATE_URL)) {
+      $node->field_hb_link[LANGUAGE_NONE][0]['url'] = $url;
+    }
+    else {
+      dpm('not a url');
+      $node->field_hb_link[LANGUAGE_NONE][0]['url'] = '';
+    }
+  }
+
+  if (!empty($fs['company'])){
+    $node->field_hb_company[LANGUAGE_NONE][]['value'] = $fs['company'];
+  }
+
+  if ( !empty($fs['cost']) && ltrim($fs['cost'], '$') != 0.00 ){
     $node->field_hb_price[LANGUAGE_NONE][0]['value'] = ltrim($fs['cost'], '$');
     $node->field_hb_price_type[LANGUAGE_NONE][0]['value'] = 'fixed';
   }
@@ -605,13 +793,25 @@ function models_forms_create_form_submit(&$form, &$form_state){
   }
 
   // Date.
-  if(!empty($fs['date'])){
-    $date = format_date(strtotime( str_replace('/', '-', $fs['date'])), 'custom', 'Y-m-d H:i:s', 'UTC');
-    $node->field_hb_time[LANGUAGE_NONE][0]['value'] = $date;
+  unset($node->field_hb_time);
+  $date_i = 0;
+  foreach ($fs as $key => $date_value) {
+    if (preg_match('/^date_/', $key)) {
+
+      if ( date('Y', strtotime($date_value)) != '1970' ) {
+        $date = format_date(strtotime( str_replace('/', '-', $date_value)), 'custom', 'Y-m-d H:i:s', 'UTC');
+        $node->field_hb_time[LANGUAGE_NONE][$date_i]['value'] = $date;
+        $date_i++;
+      }
+      else {
+        unset($node->field_hb_time);
+      }
+
+    }
   }
 
   // Location.
-  if(!empty($fs['location'])){
+  if(!empty($fs['location']['thoroughfare'])){
     $node->field_hb_location[LANGUAGE_NONE][0]['thoroughfare'] = $fs['location']['thoroughfare'] ? $fs['location']['thoroughfare'] : FALSE;
     $node->field_hb_location[LANGUAGE_NONE][0]['premise'] = $fs['location']['premise'] ? $fs['location']['premise'] : FALSE;
     $node->field_hb_location[LANGUAGE_NONE][0]['dependent_locality'] = $fs['location']['dependent_locality'] ? $fs['location']['dependent_locality'] : FALSE;
@@ -619,7 +819,68 @@ function models_forms_create_form_submit(&$form, &$form_state){
     $node->field_hb_location[LANGUAGE_NONE][0]['administrative_area'] = $fs['location']['administrative_area'] ? $fs['location']['administrative_area'] : FALSE;
     $node->field_hb_location[LANGUAGE_NONE][0]['postal_code'] = $fs['location']['postal_code'] ? $fs['location']['postal_code'] : FALSE;
     $node->field_hb_location[LANGUAGE_NONE][0]['country'] = $fs['location']['country'] ? $fs['location']['country'] : FALSE;
+
+    $add = '';
+    $add .= isset($fs['location']['thoroughfare']) ? $fs['location']['thoroughfare'] . ' ' : FALSE;
+    $add .= isset($fs['location']['premise']) ? $fs['location']['premise'] . ', ' : FALSE;
+    $add .= isset($fs['location']['locality']) ? $fs['location']['locality'] . ', ' : FALSE;
+    $add .= isset($fs['location']['dependent_locality']) ? $fs['location']['dependent_locality'] . ', ' : FALSE;
+    $add .= isset($fs['location']['administrative_locality']) ? $fs['location']['administrative_locality'] . ', ' : FALSE;
+    $add .= isset($fs['location']['postal_code']) ? $fs['location']['postal_code'] : FALSE;
+    $add = str_replace(' , ', ', ', $add);
+    $add = str_replace(',,', ',', $add);
+
+    if (isset($form_state['job_update'])) {
+      $original_add = models_cache_get_job_latlon_cache($node->nid);
+      if (!$original_add) {
+        $nw = entity_metadata_wrapper('node', $node->nid);
+        $point = geocoder('google', $add, array('https' => TRUE));
+        $geo_array = array(
+          'geo_type' => 'point',
+          'lat' => $point->coords[1],
+          'lon' => $point->coords[0],
+        );
+        $nw->field_hb_geofield->set($geo_array);
+        models_cache_build_job_latlon_cache(md5($add), $node->nid);
+      }
+      else {
+        if (md5($add) != $original_add) {
+          $nw = entity_metadata_wrapper('node', $node->nid);
+          $point = geocoder('google', $add, array('https' => TRUE));
+          $geo_array = array(
+            'geo_type' => 'point',
+            'lat' => $point->coords[1],
+            'lon' => $point->coords[0],
+          );
+          $nw->field_hb_geofield->set($geo_array);
+          models_cache_build_job_latlon_cache(md5($add), $node->nid);
+        }
+      }
+    }
+    else {
+      if (!empty($add)) {
+        $point = geocoder('google', $add, array('https' => TRUE));
+        $geo_array = array(
+          'geom' => 'POINT ('. $point->coords[0] . ' ' . $point->coords[1] .')',
+          'geo_type' => 'point',
+          // 'lat' => $point->coords[1],
+          // 'lon' => $point->coords[0],
+          // 'left' => $point->coords[0],
+          // 'top' => $point->coords[1],
+          // 'right' => $point->coords[0],
+          // 'bottom' => $point->coords[1],
+          // 'geohash' => ,
+        );
+        // dpm($geo_array, 'geo arrary new');
+        // models_cache_build_job_latlon_cache(md5($add), $node->nid);
+        $node->field_hb_geofield[LANGUAGE_NONE][0] = $geo_array;
+      }
+    }
   }
+  else {
+    $node->field_hb_location[LANGUAGE_NONE][0]['country'] = $fs['location']['country'] ? $fs['location']['country'] : FALSE;
+  }
+  // dpm($node);
   node_save($node);
 
   // if (!isset($form_state['job_update'])) {
@@ -629,5 +890,23 @@ function models_forms_create_form_submit(&$form, &$form_state){
   //   drupal_set_message(t('Your Job: ' . $fs['title'] . ' has been updated '), 'success', FALSE);
   // }
   // dpm($form_state);
-  drupal_goto('node/' .$node->nid);
+
+  if (!empty($fs['field_hb_pics'])) {
+    $nw = entity_metadata_wrapper('node', $node->nid);
+    $ew = entity_create('pics', array('type' => 'pics'));
+    $title = 'pics_0_' . $nw->getIdentifier() . '_' . $nw->label();
+    $ew->title = $title;
+    $ew->created = strtotime('now');
+    $ew->changed = strtotime('now');
+
+    $file = file_load($fs['field_hb_pics']);
+    dpm($file);
+    $ew->field_pics_img[LANGUAGE_NONE][0] = (array) $file;
+    $ew->save();
+
+    $nw->field_hb_pics[] = $ew->id;
+    $nw->save();
+  }
+
+  drupal_goto('node/' . $node->nid);
 }

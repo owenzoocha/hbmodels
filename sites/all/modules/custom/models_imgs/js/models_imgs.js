@@ -6,15 +6,16 @@
         dots: true,
         infinite: true,
         speed: 500,
-        // fade: true,
+        // slidesToShow: 2,
+        // slidesToScroll: 2,
         cssEase: 'linear',
         customPaging : function(slider, i) {
-          console.log( $(slider.$slides[i]).html() );
+          // console.log( $(slider.$slides[i]).html() );
           var thumb = $(slider.$slides[i]).attr('src');
           return  $(slider.$slides[i]).html();
         },
       });
-    }
+    },
   }
 
   Drupal.behaviors.models_imgs = {

@@ -15,15 +15,15 @@ function models_forms_cancel_form($form, &$form_state){
 
   $form_state['nid'] = arg(1);
 
-  $desc = t('To remove this current job - please make sure you have no job requests.');
+  $desc = t('You are cancelling this job - any requestees will be notified.  Are you sure you want to continue?');
 
   $form['form_description'] = array(
-    '#markup' => '<p>'.$desc.'</p>',
+    '#markup' => '<p>' . $desc . '</p>',
   );
 
   $form['submit'] = array(
     '#type' => 'submit',
-    '#value' => t('Remove Job'),
+    '#value' => t('Yes, cancel this job.'),
     '#attributes' => array(
       'class' => array('btn-success'),
       'data-loading-text' => array("removing.."),
@@ -33,10 +33,27 @@ function models_forms_cancel_form($form, &$form_state){
   return $form;
 }
 
-function models_forms_publish_form_submit($form, &$form_state){
+function models_forms_cancel_form_submit($form, &$form_state){
   global $user;
   $nw = entity_metadata_wrapper('node', $form_state['nid']);
+  // $uw = entity_metadata_wrapper('user', $user->uid);
   $nw->status->set(1);
+  if ($nw->field_hb_users->value()) {
+    $subject = t('Job Cancelled');
+    foreach ($nw->field_hb_users->getIterator() as $key => $uw) {
+      $msg = t('Sorry - my job is no longer available.');
+      rules_invoke_component('rules_pm_job_cancelled', $msg, $uw, $nw->author->value(), $nw->value(), $subject);
+    }
+  }
+
+  // Set job to admin & cancel.
+  $nw->field_hb_cancelled->set(1);
+  $nw->field_hb_paused->set(0);
+
+  $nw->author->set(1);
+  $nw->status->set(0);
   $nw->save();
-  drupal_set_message(t($nw->label() . ' is now published, keep an eye on your <strong>job requests</strong> to see who\'s interested.'), 'info', FALSE);
+
+  drupal_set_message(t($nw->label() . ' has now been cancelled - any requestees have been notified.'), 'info', FALSE);
+  drupal_goto('user/' . $user->uid);
 }

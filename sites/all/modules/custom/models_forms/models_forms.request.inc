@@ -14,9 +14,10 @@ function models_forms_request_form($form, &$form_state){
   $uw = entity_metadata_wrapper('user', $user);
 
   $form_state['nid'] = arg(1);
-  foreach ($nw->field_hb_users->getIterator() as $k => $v) {
-    if($v->getIdentifier() == $user->uid){
-      $requested = true;
+  foreach ($nw->field_hb_users_eck->getIterator() as $k => $v) {
+    if($v->field_feedb_user->getIdentifier() == $user->uid){
+      $requested = TRUE;
+      $form_state['requested'] = $v->getIdentifier();
       break;
     }
   }
@@ -66,27 +67,60 @@ function models_forms_request_form($form, &$form_state){
 
 function models_forms_request_form_submit($form, &$form_state){
   global $user;
+  dpm($form_state);
+
   $nw = entity_metadata_wrapper('node', $form_state['nid']);
   $uw = entity_metadata_wrapper('user', $user->uid);
   $subject = $nw->field_hb_type->value() != 'personal' ? t('Job Request') : t('Job Offer');
   $msg = isset($form_state['values']['msg']) ? $form_state['values']['msg'] : false;
   $removed = 1;
-  if(sizeof($nw->field_hb_users->value()) > 0){
+
+  if (!isset($form_state['requested'])) {
+    $uw_label = str_replace(' ', '_', strtolower($uw->label()));
+    $title = 'client_' . $uw_label . '_uid_' . $uw->getIdentifier() . '_nid_' . $nw->getIdentifier();
+    // $query = new EntityFieldQuery();
+    // $query->entityCondition('entity_type', 'feedback')
+    //   ->entityCondition('bundle', 'feedback')
+    //   ->propertyCondition('title', $title, '=');
+    // $result = $query->execute();
+    $ew = entity_create('feedback', array('type' => 'feedback'));
+    $ew->title = $title;
+    $ew->created = strtotime('now');
+    $ew->field_rating[LANGUAGE_NONE][0]['value'] = 0;
+    // $ew->field_feedback[LANGUAGE_NONE][0]['value'] = $fs['msg_' . $nw->author->getIdentifier()];
+    $ew->field_feedb_nid[LANGUAGE_NONE][0]['nid'] = $nw->getIdentifier();
+    $ew->field_feedb_user[LANGUAGE_NONE][0]['uid'] = $uw->getIdentifier();
+    $ew->field_client_selected[LANGUAGE_NONE][0]['value'] = 0;
+    $ew->field_feedb_type[LANGUAGE_NONE][0]['value'] = 'client';
+    $ew->save();
+  }
+  else {
+    $ew = entity_metadata_wrapper('feedback', $form_state['requested']);
+  }
+
+  if(sizeof($nw->field_hb_users_eck->value()) > 0){
     $flag = 0;
-    foreach ($nw->field_hb_users->getIterator() as $k => $u) {
-      if($u->getIdentifier() == $user->uid){
-        $nw->field_hb_users[$k] = NULL;
+    foreach ($nw->field_hb_users_eck->getIterator() as $k => $u) {
+
+      // Remove old user from the list. - REMOVING.
+      if($u->field_feedb_user->getIdentifier() == $user->uid){
+        $nw->field_hb_users_eck[$k] = NULL;
         $flag = 1;
+
+        entity_delete('feedback', $ew->getIdentifier());
         break;
       }
     }
+    // Append a new user eck to the list. - ADDING.
     if($flag == 0){
-      $nw->field_hb_users->offsetSet(sizeof($nw->field_hb_users->value()), $user->uid);
+      $nw->field_hb_users_eck->offsetSet(sizeof($nw->field_hb_users_eck->value()), $ew->id);
       rules_invoke_component('rules_pm_job_request', $msg, $user, $nw->author->value(), $nw->value(), $subject);
       $removed = 0;
     }
+
+  // Set the initial user eck to the list. - ADDING.
   } else {
-    $nw->field_hb_users->offsetSet(0, $user->uid);
+    $nw->field_hb_users_eck->offsetSet(0, $ew->id);
     rules_invoke_component('rules_pm_job_request', $msg, $user, $nw->author->value(), $nw->value(), $subject);
     $removed = 0;
   }
@@ -95,9 +129,9 @@ function models_forms_request_form_submit($form, &$form_state){
 
   if ($nw->field_hb_type->value() != 'personal') {
     if($removed == 1){
-      drupal_set_message(t('Hey !name, your job request has now been removed - we\'ve let the job owner know! Check out the <strong>job board</strong> for more hair and beauty options.', array('!name' => $uw->field_first_name->value())), 'info', FALSE);
+      drupal_set_message(t('Hey !name, your job request has now been removed - we\'ve let the job owner know! Check out the <strong>!link</strong> for more hair and beauty options.', array('!name' => $uw->field_first_name->value(), '!link' => l(t('job listings'), 'job-search'))), 'info', FALSE);
     } else {
-      drupal_set_message(t('Hey !name, good news - your request has been sent! Keep an eye on your <strong>job requests</strong> for updates - you will be contacted soon.', array('!name' => $uw->field_first_name->value())), 'info', FALSE);
+      drupal_set_message(t('Hey !name, good news - your request has been sent! Keep an eye on your <strong>!link</strong> for updates - you will be contacted soon.', array('!name' => $uw->field_first_name->value(), '!link' => l(t('job requests'), 'job-requests'))), 'status', FALSE);
     }
   }
   else {

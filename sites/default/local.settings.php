@@ -38,7 +38,7 @@ $conf['javascript_aggregator_gzip'] = FALSE;
 
 // Theme debug mode (Drupal >= 7.33)
 // https://www.drupal.org/node/223440#theme-debug
-// $conf['theme_debug'] = FALSE;
+$conf['theme_debug'] = TRUE;
 
 // Turn on all error reporting for local development.
 error_reporting(-1);

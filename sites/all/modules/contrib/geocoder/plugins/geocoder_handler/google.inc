@@ -76,8 +76,6 @@ function geocoder_google($address, $options = array()) {
       $google_url = str_replace('http://', 'https://', $google_url);
     }
 
-    dpm($google_url, 'url');
-
     // Build the URL.
     $url = url($google_url, array(
       'query' => $query,

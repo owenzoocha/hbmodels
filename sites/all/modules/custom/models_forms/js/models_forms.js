@@ -11,11 +11,23 @@
       hbmf.nanobar = new Nanobar( options );
       hbmf.formSubmit();
 
-      $('#hb-datetime').combodate({
+      $( document ).ajaxStop(function() {
+        var amt = $('.set-date').length;
+        if (amt > 0) {
+          $('.set-date input').combodate({
+            smartDays: true,
+            firstItem: 'name',
+            minYear: moment().format('YYYY'),
+            maxYear: moment().add(1, 'Year').format('YYYY')
+          });
+        }
+      });
+
+      $('.set-date input').combodate({
         smartDays: true,
         firstItem: 'name',
         minYear: moment().format('YYYY'),
-        maxYear: moment().format('YYYY')
+        maxYear: moment().add(1, 'Year').format('YYYY')
       });
 
       $('#hb-costing').priceFormat({
@@ -62,12 +74,12 @@
         hbmf.showTypeSelected(Drupal.settings.form_type, true);
       }
 
-      $('.btn').on('click', function () {
-        var $btn = $(this).button('loading');
-        setTimeout(function(){
-          $btn.button('reset');
-        }, 500);
-      })
+      // $('.btn').on('click', function () {
+      //   var $btn = $(this).button('loading');
+      //   setTimeout(function(){
+      //     $btn.button('reset');
+      //   }, 500);
+      // })
     },
 
     showTypeSelected : function(type, edit = false) {
@@ -225,7 +237,6 @@
 
     formSubmit : function(){
       $('#models-forms-create-form').submit(function(){
-        console.log('here!');
         hbmf.nanobar.go(30);
         setTimeout(function(){
           hbmf.nanobar.go(100);
